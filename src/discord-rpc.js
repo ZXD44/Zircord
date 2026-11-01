@@ -4,16 +4,17 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 // ==========================================
-// ⚙️ CONFIGURATION LOADER (agycord.json)
+// ⚙️ CONFIGURATION LOADER (clicord.json)
 // ==========================================
 const userHome = process.env.USERPROFILE || "";
-const globalConfigPath = path.join(userHome, ".gemini", "agycord.json");
-const localConfigPath = path.join(process.cwd(), "agycord.json");
+const globalConfigPath = path.join(userHome, ".gemini", "clicord.json");
+const localConfigPath = path.join(process.cwd(), "clicord.json");
+const fallbackConfigPath = path.join(userHome, ".gemini", "agycord.json");
 
 function loadConfig() {
     let cfg = {
         theme: "thai",
-        username: process.env.AGY_USER || process.env.USERNAME || "ZirconX",
+        username: process.env.CLICORD_USER || process.env.AGY_USER || process.env.USERNAME || "ZirconX",
         afkTimeoutMinutes: 5,
         showButtons: true,
         profileUrl: "https://github.com/ZirconX",
@@ -26,6 +27,8 @@ function loadConfig() {
             cfg = { ...cfg, ...JSON.parse(fs.readFileSync(localConfigPath, "utf8")) };
         } else if (fs.existsSync(globalConfigPath)) {
             cfg = { ...cfg, ...JSON.parse(fs.readFileSync(globalConfigPath, "utf8")) };
+        } else if (fs.existsSync(fallbackConfigPath)) {
+            cfg = { ...cfg, ...JSON.parse(fs.readFileSync(fallbackConfigPath, "utf8")) };
         }
     } catch {}
     return cfg;
@@ -405,7 +408,7 @@ function updatePresence() {
     let largeImage = projLang.icon;
     let largeText = `${projLang.name} • ${userTag}`;
     let smallImage = "vscode";
-    let smallText = `👤 ${userTag}`;
+    let smallText = `👤 ${userTag} • Clicord`;
 
     const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
     state = t.state(userTag, folderName, gitContext);

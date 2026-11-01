@@ -1,23 +1,27 @@
 {
-  "name": "agycord",
+  "name": "clicord",
   "version": "1.0.0",
-  "description": "Intelligent Discord Rich Presence for Google Antigravity CLI (agy)",
+  "description": "Universal Intelligent Discord Rich Presence for Terminal & CLI",
   "main": "src/discord-rpc.js",
+  "bin": {
+    "clicord": "bin/clicord.cmd"
+  },
   "scripts": {
     "start": "node src/discord-rpc.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ZirconX/agycord.git"
+    "url": "https://github.com/ZirconX/clicord.git"
   },
   "keywords": [
-    "agycord",
+    "clicord",
     "vscord",
-    "antigravity",
-    "agy",
     "discord-rpc",
     "rich-presence",
-    "cli"
+    "cli",
+    "terminal",
+    "antigravity",
+    "developer-tools"
   ],
   "author": "ZirconX",
   "license": "MIT"

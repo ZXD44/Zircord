@@ -11,7 +11,7 @@ fn main() {
     let localappdata = env::var("LOCALAPPDATA").unwrap_or_default();
 
     // Priority 1: Project dev folder; Priority 2: Installed script in .gemini
-    let dev_script = format!(r"{}\Documents\agycord\src\discord-rpc.js", userprofile);
+    let dev_script = format!(r"{}\Documents\clicord\src\discord-rpc.js", userprofile);
     let installed_script = format!(r"{}\.gemini\scripts\discord-rpc.js", userprofile);
 
     let rpc_script = if Path::new(&dev_script).exists() {
