@@ -1,4 +1,4 @@
-# Install script for Zircord (Universal Discord Rich Presence for Terminal & Any CLI)
+# Install script for Zircord (Universal Discord Rich Presence for Terminal, Shells & Roblox)
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
@@ -19,11 +19,11 @@ $projDir = $PSScriptRoot
 New-Item -ItemType Directory -Path $targetBin, $targetScripts -Force | Out-Null
 
 # 1. Copy RPC Script
-Write-Host "[1/4] Deploying Zircord RPC engine..." -ForegroundColor Yellow
+Write-Host "[1/5] Deploying Zircord RPC engine..." -ForegroundColor Yellow
 Copy-Item (Join-Path $projDir "src\discord-rpc.js") (Join-Path $targetScripts "discord-rpc.js") -Force
 
 # 2. Copy Executables & Wrappers
-Write-Host "[2/4] Deploying universal shims and CLI watchers..." -ForegroundColor Yellow
+Write-Host "[2/5] Deploying universal shims and CLI watchers..." -ForegroundColor Yellow
 Copy-Item (Join-Path $projDir "bin\zircord.cmd") (Join-Path $targetBin "zircord.cmd") -Force
 Copy-Item (Join-Path $projDir "bin\zircord") (Join-Path $targetBin "zircord") -Force
 Copy-Item (Join-Path $projDir "bin\clicord.cmd") (Join-Path $targetBin "clicord.cmd") -Force
@@ -39,7 +39,7 @@ if (-not (Test-Path (Join-Path $userProfile ".gemini\zircord.json"))) {
 }
 
 # 3. Add to User PATH if not present
-Write-Host "[3/4] Configuring Environment PATH..." -ForegroundColor Yellow
+Write-Host "[3/5] Configuring Environment PATH..." -ForegroundColor Yellow
 $userPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$targetBin*") {
     $newPath = "$targetBin;$userPath"
@@ -49,17 +49,32 @@ if ($userPath -notlike "*$targetBin*") {
     Write-Host "      $targetBin already active in User PATH" -ForegroundColor DarkGray
 }
 
-# 4. Check Node.js runtime
-Write-Host "[4/4] Verifying Node.js runtime..." -ForegroundColor Yellow
+# 4. Configure Auto-Start on Windows Boot (No CLI Required)
+Write-Host "[4/5] Setting up Windows Auto-Start on Boot..." -ForegroundColor Yellow
+$startupFolder = [System.Environment]::GetFolderPath('Startup')
+$vbsPath = Join-Path $startupFolder "zircord.vbs"
+$engineScript = Join-Path $targetScripts "discord-rpc.js"
+$vbsScript = "Set WshShell = CreateObject(`"WScript.Shell`")`nWshShell.Run `"node `"`"`"$engineScript`"`"`" `"`"`"$userProfile`"`"`"`, 0, False"
+[System.IO.File]::WriteAllText($vbsPath, $vbsScript, [System.Text.Encoding]::ASCII)
+Write-Host "      Auto-start enabled! Zircord will silently run whenever Windows starts." -ForegroundColor Green
+
+# 5. Check Node.js and Launch Service Immediately
+Write-Host "[5/5] Verifying dependencies and launching service..." -ForegroundColor Yellow
 if (Get-Command node -ErrorAction SilentlyContinue) {
     $nodeVer = node -v
-    Write-Host "      Node.js found: $nodeVer" -ForegroundColor Green
+    Write-Host "      Node.js verified: $nodeVer" -ForegroundColor Green
+    
+    # Launch background instance right now
+    Start-Process -FilePath "node" -ArgumentList @($engineScript, $userProfile) -WindowStyle Hidden
+    Write-Host "      Zircord is now active in the background!" -ForegroundColor Green
 } else {
-    Write-Host "      WARNING: Node.js was not found in PATH. Please install Node.js (https://nodejs.org)" -ForegroundColor Red
+    Write-Host "      WARNING: Node.js was not found in PATH." -ForegroundColor Red
+    Write-Host "      Please install Node.js from https://nodejs.org" -ForegroundColor Red
 }
 
 Write-Host ""
-Write-Host "Installation Complete!" -ForegroundColor Green
-Write-Host "  • Type 'zircord' in any project to track it on Discord" -ForegroundColor Cyan
-Write-Host "  • Type 'agy' to run Antigravity CLI with automatic presence" -ForegroundColor Cyan
+Write-Host "🎉 Installation Complete!" -ForegroundColor Green
+Write-Host "  • Windows Auto-Start: Enabled (รันอัตโนมัติทุกครั้งที่เปิดเครื่อง)" -ForegroundColor Cyan
+Write-Host "  • Non-CLI Users: ไม่ต้องเปิดหน้าต่าง Terminal ใดๆ ระบบจะทำงานเงียบๆ ในแบ็กกราวด์ทันทีที่มี Discord" -ForegroundColor Cyan
+Write-Host "  • CLI Users: สามารถพิมพ์ 'zircord status' หรือ 'zircord' ได้ตลอดเวลา" -ForegroundColor Cyan
 Write-Host ""
