@@ -4,13 +4,13 @@
 
 **Universal, Intelligent Discord Rich Presence for Terminal, Shells, Neovim & Roblox Studio**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-ZXD44%2FZircord-blue?style=flat-square&logo=github)](https://github.com/ZXD44/Zircord)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg?style=flat-square)]()
-[![Runtime](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square)]()
-[![Built with Rust](https://img.shields.io/badge/Built%20With-Rust-orange.svg?style=flat-square)]()
+[![Runtime](https://img.shields.io/badge/Node.js-18%2B-brightgreen.svg?style=flat-square)]()
 [![Shell Support](https://img.shields.io/badge/Shell-wt%20%7C%20cmd%20%7C%20pwsh%20%7C%20bash%20%7C%20zsh-purple.svg?style=flat-square)]()
 
-*Crafted by [ZirconX](https://github.com/ZirconX) — Engineered natively for the Terminal, all Shells, and AI Pair Programmers.*
+*Crafted by [ZirconX](https://github.com/ZXD44) — Engineered natively for Terminal lovers, Roblox developers, and standalone users.*
 
 </div>
 
@@ -18,7 +18,9 @@
 
 ## ⚡ Features (จุดเด่น)
 
-* 💎 **Zircord Engine**: ตรวจจับภาษาโค้ดและชื่อไฟล์ที่กำลังเขียนจริงแบบเรียลไทม์ (รองรับทั้งการเขียนผ่าน Terminal, AI Agents เช่น Antigravity, และ Editors ทั่วไป)
+* 💎 **Zircord Engine**: ตรวจจับภาษาโค้ดและชื่อไฟล์ที่กำลังเขียนจริงแบบเรียลไทม์ (รองรับทั้ง Terminal, AI Agents เช่น Antigravity, และ Editors ทั่วไป)
+* 🚀 **Auto-Start on Boot (เปิดเครื่องแล้วทำงานทันที)**: ติดตั้งครั้งเดียว ระบบจะรันตัวเองเงียบๆ ในแบ็กกราวด์ทันทีที่เปิด Windows ไม่ต้องคอยเปิดเทอร์มินัลทิ้งไว้
+* 🖱️ **Non-CLI Friendly (1-Click Installer)**: สำหรับผู้ใช้ทั่วไป แค่ดับเบิ้ลคลิก `install.cmd` ระบบจะตั้งค่าและเริ่มทำงานให้อัตโนมัติทันที
 * 🎮 **Roblox Studio & Luau Integration**: ตรวจจับโปรเจกต์ Roblox อัตโนมัติ (Roblox Studio, Bloxstrap, Rojo `default.project.json`, Wally, Rokit)
   * แยกประเภทสคริปต์ Luau เจาะจง: `Client Script`, `Server Script`, `Module Script`
   * แสดงชื่อเกม/Place Name และสถานะ Rojo Sync บนการ์ด Discord ทันที
@@ -28,9 +30,14 @@
 * 🔘 **Interactive Profile Buttons**: ปุ่มกดบนการ์ด Discord เชื่อมโยงไปยัง GitHub Repository และโปรไฟล์ผู้พัฒนาโดยตรง
 * ☕ **Intelligent AFK Detection**: สลับสถานะเป็นโหมดพักสายตา/จิบกาแฟอัตโนมัติหากไม่มีการเคลื่อนไหวเกินเวลาที่กำหนด
 * ⚙️ **Config File (`zircord.json`)**: ปรับแต่งธีม, ชื่อผู้ใช้, Client ID, ปุ่มกด, และเวลา AFK ผ่าน JSON ยืดหยุ่น
-* 🌐 **Universal Terminal Compatibility**: 
-  * รันคำสั่ง **`zircord`** เพื่อมอนิเตอร์โฟลเดอร์โปรเจกต์ใดๆ ใน Terminal ได้ทันที
-  * รองรับ Cross-Platform ทั้ง Windows Named Pipe และ Linux/macOS Unix Domain Sockets
+* 🌐 **Universal Cross-Platform**: รองรับทั้ง Windows Named Pipe และ Linux/macOS Unix Domain Sockets
+
+---
+
+## 📋 Requirements (ความต้องการของระบบ)
+
+1. **Discord Desktop App**: เปิดใช้งาน Discord บนเครื่อง (Discord, Discord Canary หรือ Discord PTB)
+2. **Node.js**: เวอร์ชัน 18 ขึ้นไป ([ดาวน์โหลดฟรีที่ nodejs.org](https://nodejs.org))
 
 ---
 
@@ -49,9 +56,32 @@ Visual Studio Code
 
 ---
 
+## 📥 Installation (วิธีติดตั้ง)
+
+### 🖱️ วิธีที่ 1: แบบ 1-Click (สำหรับผู้ใช้ทั่วไป / ไม่ใช้ CLI)
+1. ดาวน์โหลดหรือ Clone โฟลเดอร์โปรเจกต์มาไว้ในเครื่อง:
+   ```bash
+   git clone https://github.com/ZXD44/Zircord.git
+   ```
+2. **ดับเบิ้ลคลิกที่ไฟล์ `install.cmd`**
+3. เสร็จสิ้น! ระบบจะ:
+   * ตั้งค่าให้ **รันอัตโนมัติทุกครั้งที่เปิดเครื่อง (Windows Startup)**
+   * เริ่มการทำงานในแบ็กกราวด์ทันที
+   * เมื่อเปิด Discord ขึ้นมา สถานะจะปรากฏบนโปรไฟล์ทันที
+
+---
+
+### 💻 วิธีที่ 2: ติดตั้งผ่าน PowerShell (สำหรับ Developer)
+เปิด PowerShell ในโฟลเดอร์โปรเจกต์แล้วรัน:
+```powershell
+.\install.ps1
+```
+
+---
+
 ## 🕹️ CLI Commands (คำสั่งจัดการ)
 
-สามารถสั่งการ Zircord ได้ง่ายๆ ผ่านเทอร์มินัลทุกตัว:
+สำหรับผู้ใช้งานผ่าน Terminal / Shell สามารถสั่งการได้ตลอดเวลา:
 
 ```bash
 zircord              # รัน Zircord มอนิเตอร์โฟลเดอร์ปัจจุบัน (Foreground)
@@ -75,7 +105,7 @@ zircord --help       # แสดงวิธีใช้งานทั้งห
   "username": "ZirconX",
   "afkTimeoutMinutes": 5,
   "showButtons": true,
-  "profileUrl": "https://github.com/ZirconX",
+  "profileUrl": "https://github.com/ZXD44",
   "showGitStats": true,
   "enableRobloxDetection": true,
   "clientId": ""
@@ -96,30 +126,6 @@ zircord --help       # แสดงวิธีใช้งานทั้งห
 
 ---
 
-## 📥 Installation (วิธีติดตั้ง)
-
-เปิด PowerShell ในโฟลเดอร์โปรเจกต์แล้วรัน:
-```powershell
-.\install.ps1
-```
-
-ปิดแล้วเปิดหน้าต่าง Terminal ใหม่ สามารถใช้งานได้ทันที:
-1. **รันมอนิเตอร์โปรเจกต์ทั่วไป (Universal CLI)**: 
-   ```bash
-   zircord
-   ```
-2. **รันอัตโนมัติพร้อม Antigravity CLI**: 
-   ```bash
-   agy
-   ```
-
-### วิธีถอนการติดตั้ง:
-```powershell
-.\uninstall.ps1
-```
-
----
-
 ## 💡 How to Customize Header Name (`Playing ...`)
 
 หากต้องการเปลี่ยนหัวข้อบนสุดจาก `Visual Studio Code` เป็นชื่อโปรเจกต์หรือชื่อที่ต้องการ:
@@ -130,7 +136,17 @@ zircord --help       # แสดงวิธีใช้งานทั้งห
 
 ---
 
+## 🗑️ Uninstallation (วิธีถอนการติดตั้ง)
+
+ดับเบิ้ลคลิกที่ไฟล์ **`uninstall.cmd`** หรือรันผ่าน PowerShell:
+```powershell
+.\uninstall.ps1
+```
+ระบบจะปิดการทำงาน ลบ Auto-Start จาก Windows Startup และลบไฟล์ติดตั้งทั้งหมดออกอย่างสมบูรณ์
+
+---
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).  
-Developed & Maintained by [ZirconX](https://github.com/ZirconX).
+Developed & Maintained by [ZirconX](https://github.com/ZXD44).
