@@ -10,7 +10,7 @@
 [![Runtime](https://img.shields.io/badge/Node.js-18%2B-brightgreen.svg?style=flat-square)]()
 [![Shell Support](https://img.shields.io/badge/Shell-wt%20%7C%20cmd%20%7C%20pwsh%20%7C%20bash%20%7C%20zsh-purple.svg?style=flat-square)]()
 
-*Crafted by [ZirconX](https://github.com/ZXD44) — Engineered natively for Terminal lovers, Roblox developers, and standalone users.*
+*Crafted by [ZirconX (ZXD44)](https://github.com/ZXD44) — Engineered natively for Terminal lovers, Roblox developers, and standalone users.*
 
 </div>
 
@@ -177,4 +177,4 @@ Zircord/
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).  
-Developed & Maintained by [ZirconX](https://github.com/ZXD44).
+Developed & Maintained by [ZirconX (ZXD44)](https://github.com/ZXD44).
