@@ -199,29 +199,36 @@ let lastTrackedTarget = "";
 
 const TEMPLATES = {
     thai: {
-        writing: (lang, file, sub) => `🔥 กำลังเขียน ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
-        reading: (lang, file, sub) => `📖 กำลังส่องโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
-        running: (target) => `⚙️ กำลังรันคำสั่ง: ${target}`,
-        searching: (query) => `🔍 กำลังค้นคว้า: ${query}`,
-        planning: (task) => `🧠 กำลังวางแผนโค้ด: ${task}`,
-        idleLang: (lang) => `🔥 ลุยโปรเจกต์ ${lang}`,
-        idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
-        idleRoblox: (place) => `🎮 พัฒนาเกม Roblox: ${place}`,
-        afkDetails: () => `☕ กำลังพักเบรก / AFK`,
-        afkState: (user) => `พักสายตาแป๊บเดียว • 👤 ${user}`,
+        writing: (lang, file, sub) => `🔥 เขียนโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
+        reading: (lang, file, sub) => `📖 ส่องโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
+        running: (target) => `⚙️ รัน: ${target}`,
+        searching: (query) => `🔍 ค้นหา: ${query}`,
+        planning: (task) => `🧠 วางแผน: ${task}`,
+        idleLang: (lang) => `🔥 ทำโปรเจกต์ ${lang}`,
+        idleGeneric: (folder) => {
+            if (folder === "เทอร์มินัล" || folder === "Terminal") {
+                return "💻 เทอร์มินัลพร้อมใช้งาน";
+            }
+            return `💻 เขียนโค้ดใน ${folder}`;
+        },
+        idleRoblox: (place) => `🎮 Roblox: ${place}`,
+        afkDetails: () => `☕ พักสายตา / AFK`,
+        afkState: () => `พักผ่อนแป๊บเดียว`,
         state: (user, folder, git, isRoblox) => {
-            const prefix = isRoblox ? `🎮 ${folder} • 👤 ${user}` : `👤 ${user}`;
-            if (git) return `${prefix} • ${git}`;
-            return `${prefix} @ ${folder}`;
+            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
+            const safeFolder = isUserFolder ? "เทอร์มินัล" : folder;
+            const icon = isRoblox ? "🎮" : "📁";
+            if (safeFolder === "เทอร์มินัล" || safeFolder === "Terminal") {
+                return git ? `💻 เทอร์มินัล${git}` : "💻 เทอร์มินัล";
+            }
+            return `${icon} ${safeFolder}${git || ""}`;
         },
         gitFormat: (branch, dirty, diff) => {
-            const parts = [];
-            if (branch) parts.push(`🌿 ${branch}`);
-            if (dirty) {
-                const diffStr = diff ? ` [${diff}]` : "";
-                parts.push(`✏️ แก้ไป ${dirty} ไฟล์${diffStr}`);
-            }
-            return parts.join(" • ");
+            if (!branch && !dirty && !diff) return "";
+            const bStr = branch ? ` (${branch})` : "";
+            if (diff) return `${bStr} • ✏️ ${diff}`;
+            if (dirty) return `${bStr} • ✏️ ${dirty} ไฟล์`;
+            return bStr;
         }
     },
     modern: {
@@ -231,11 +238,19 @@ const TEMPLATES = {
         searching: (query) => `🔍 Researching: ${query}`,
         planning: (task) => `🧠 Architecting: ${task}`,
         idleLang: (lang) => `⚡ Developing ${lang} Project`,
-        idleGeneric: (folder) => `💻 Crafting in ${folder}`,
+        idleGeneric: (folder) => (folder === "Terminal" || folder === "เทอร์มินัล") ? `💻 Working in Terminal` : `💻 Crafting in ${folder}`,
         idleRoblox: (place) => `🎮 Building Roblox: ${place}`,
         afkDetails: () => `☕ On a Coffee Break / AFK`,
         afkState: (user) => `Taking a short rest • 👤 ${user}`,
-        state: (user, folder, git, isRoblox) => `${isRoblox ? "🎮" : "👤"} ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        state: (user, folder, git, isRoblox) => {
+            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
+            const safeFolder = isUserFolder ? "Terminal" : folder;
+            const prefix = isRoblox ? `🎮 ${safeFolder} • 👤 ${user}` : `👤 ${user}`;
+            const isTerminal = safeFolder === "Terminal" || safeFolder === "เทอร์มินัล";
+            const folderPart = isTerminal ? `• 💻 Terminal` : `@ ${safeFolder}`;
+            if (git) return `${prefix} ${folderPart}${git ? ` (${git})` : ""}`;
+            return `${prefix} ${folderPart}`;
+        },
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`🌿 ${branch}`);
@@ -253,11 +268,15 @@ const TEMPLATES = {
         searching: (query) => `📡 [SCAN] ${query}`,
         planning: (task) => `🧬 [MATRIX] ${task}`,
         idleLang: (lang) => `⚡ [ONLINE] ${lang} Node`,
-        idleGeneric: (folder) => `💻 [IDLE] ${folder} Shell`,
+        idleGeneric: (folder) => (folder === "Terminal" || folder === "เทอร์มินัล") ? `💻 [IDLE] Root Terminal` : `💻 [IDLE] ${folder} Shell`,
         idleRoblox: (place) => `🎮 [ROBLOX] ${place}`,
         afkDetails: () => `💤 [STANDBY] Node Idle`,
         afkState: (user) => `root@${user} // sleep_mode`,
-        state: (user, folder, git) => `root@${user} // ${folder}${git ? ` [${git}]` : ""}`,
+        state: (user, folder, git) => {
+            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
+            const safeFolder = isUserFolder ? "Terminal" : folder;
+            return `root@${user} // ${safeFolder}${git ? ` [${git}]` : ""}`;
+        },
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`git:${branch}`);
@@ -275,11 +294,15 @@ const TEMPLATES = {
         searching: (query) => `🔎 ส่องไอเดีย: ${query}`,
         planning: (task) => `💭 วางแผนทำของเจ๋งๆ`,
         idleLang: (lang) => `🍃 ชิลล์ๆ กับ ${lang}`,
-        idleGeneric: (folder) => `✨ อยู่ในโฟลเดอร์ ${folder}`,
+        idleGeneric: (folder) => (folder === "ห้องทำงาน" || folder === "เทอร์มินัล" || folder === "Terminal") ? `✨ เปิดเครื่องพร้อมลุยงาน` : `✨ อยู่ในโฟลเดอร์ ${folder}`,
         idleRoblox: (place) => `🎮 นั่งทำเกม Roblox: ${place}`,
         afkDetails: () => `☕ จิบชาพักผ่อน / AFK`,
         afkState: (user) => `🌱 ${user} กำลังพักผ่อน`,
-        state: (user, folder, git) => `🌱 ${user} ใน ${folder}${git ? ` (${git})` : ""}`,
+        state: (user, folder, git) => {
+            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
+            const safeFolder = isUserFolder ? "ห้องทำงาน" : folder;
+            return `🌱 ${user} ใน ${safeFolder}${git ? ` (${git})` : ""}`;
+        },
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`🌿 ${branch}`);
@@ -495,7 +518,7 @@ function getGitDiffStats(dir) {
         const del = out.match(/(\d+)\s+deletion/);
         const plus = ins ? `+${ins[1]}` : "+0";
         const minus = del ? `-${del[1]}` : "-0";
-        return `${plus}/${minus}`;
+        return `${plus} ${minus}`;
     } catch {
         return null;
     }
@@ -686,7 +709,16 @@ function updatePresence() {
     config = loadConfig();
     const t = TEMPLATES[config.theme] || TEMPLATES.thai;
     const userTag = config.username;
-    const folderName = path.basename(targetDir) || "Workspace";
+    const rawFolderName = path.basename(targetDir) || "Workspace";
+    const isUserHome = Boolean(userHome && path.resolve(targetDir).toLowerCase() === path.resolve(userHome).toLowerCase());
+    const isSameName = Boolean(rawFolderName.toLowerCase() === (userTag || "").toLowerCase());
+
+    let cleanFolder = rawFolderName;
+    if (isUserHome || isSameName) {
+        cleanFolder = config.theme === "thai" ? "เทอร์มินัล" : (config.theme === "cozy" ? "ห้องทำงาน" : "Terminal");
+    }
+    const folderName = cleanFolder;
+
     const branch = getGitInfo(targetDir);
     const rbxInfo = getRobloxStudioInfo(targetDir);
     const projLang = detectProjectLanguage(targetDir);
@@ -771,12 +803,59 @@ function updatePresence() {
 
     const buttons = [];
     if (config.showButtons) {
-        const remoteUrl = getGitRemoteUrl(targetDir);
-        if (remoteUrl) {
-            buttons.push({ label: "📂 ดูโค้ดบน GitHub", url: remoteUrl });
+        // 1. Custom buttons from config (up to 2)
+        if (Array.isArray(config.buttons) && config.buttons.length > 0) {
+            for (const btn of config.buttons) {
+                if (btn && btn.label && btn.url && typeof btn.url === "string" && btn.url.startsWith("http")) {
+                    buttons.push({
+                        label: String(btn.label).slice(0, 32),
+                        url: String(btn.url).slice(0, 512)
+                    });
+                    if (buttons.length === 2) break;
+                }
+            }
         }
-        if (config.profileUrl && buttons.length < 2) {
-            buttons.push({ label: `👤 ${userTag} Profile`, url: config.profileUrl });
+
+        // 2. Ensure exactly 2 buttons in 100% Thai
+        if (buttons.length < 2) {
+            const remoteUrl = getGitRemoteUrl(targetDir);
+            const fallbackProfileUrl = config.profileUrl || "https://github.com/ZXD44";
+            const zircordRepoUrl = "https://github.com/ZXD44/Zircord";
+
+            if (buttons.length === 0) {
+                if (remoteUrl) {
+                    buttons.push({
+                        label: "ดูโค้ดบน GitHub",
+                        url: remoteUrl
+                    });
+                    buttons.push({
+                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        url: fallbackProfileUrl
+                    });
+                } else {
+                    buttons.push({
+                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        url: fallbackProfileUrl
+                    });
+                    buttons.push({
+                        label: "โปรเจกต์ Zircord",
+                        url: zircordRepoUrl
+                    });
+                }
+            } else if (buttons.length === 1) {
+                const firstUrl = buttons[0].url;
+                if (firstUrl !== fallbackProfileUrl) {
+                    buttons.push({
+                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        url: fallbackProfileUrl
+                    });
+                } else {
+                    buttons.push({
+                        label: "โปรเจกต์ Zircord",
+                        url: zircordRepoUrl
+                    });
+                }
+            }
         }
     }
 

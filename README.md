@@ -20,12 +20,14 @@
 PLAYING A GAME
 Visual Studio Code
 
-🔥 กำลังเขียน JavaScript: src/discord-rpc.js
-👤 ZirconX • 🌿 master • ✏️ แก้ไป 1 ไฟล์ [+27/-6]
+🔥 เขียนโค้ด: src/discord-rpc.js
+📁 Zircord (master) • ✏️ +27 -6
 02:45 elapsed
 
-[ 📂 ดูโค้ดบน GitHub ]   [ 👤 ZirconX Profile ]
+[ ดูโค้ดบน GitHub ]   [ โปรไฟล์ ZirconX ]
 ```
+
+> 📱 **ออกแบบรองรับมือถือ 100%:** สั้นกระชับ พอดีการ์ด ไม่โดนตัดคำไข่ปลา (`...`) และปุ่มกดภาษาไทยไร้อีโมจิแสดงผลสวยงามเมื่อคนอื่นส่องโปรไฟล์
 
 ---
 
@@ -84,6 +86,7 @@ zircord              # รันมอนิเตอร์โฟลเดอร
 
 * **เปลี่ยนหัวข้อบนสุด:** ใส่ `clientId` ของ Discord Application ตัวเองลงไปได้เลย
 * **ธีมที่เลือกได้:** `"thai"` (ค่าเริ่มต้น), `"modern"`, `"cyber"`, `"cozy"`
+* **กำหนดปุ่มเองได้ (ไม่เกิน 2 ปุ่ม):** ใส่ฟิลด์ `"buttons": [{"label": "ชื่อปุ่ม", "url": "https://..."}]` ใน `zircord.json`
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "zircord",
-  "version": "1.3.0",
+  "version": "2.0.1",
   "description": "Universal Discord Rich Presence for Terminal, Shells, Neovim & Roblox Studio by ZirconX",
   "main": "src/discord-rpc.js",
   "bin": {
