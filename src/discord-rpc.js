@@ -41,7 +41,21 @@ function loadConfig() {
 }
 
 let config = loadConfig();
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
+// Default Application IDs:
+// - "383226320970055681" -> "Playing Visual Studio Code"
+// - "1199942284653903882" -> "Playing Roblox Studio"
+// - Custom ID in clicord.json -> "Playing <Your Custom App Name>"
+const VSCODE_CLIENT_ID = "383226320970055681";
+const ROBLOX_CLIENT_ID = "1199942284653903882";
+
+function getActiveClientId(rbxInfo) {
+    if (config.clientId) return config.clientId;
+    if (process.env.DISCORD_CLIENT_ID) return process.env.DISCORD_CLIENT_ID;
+    if (rbxInfo && rbxInfo.isRoblox) return ROBLOX_CLIENT_ID;
+    return VSCODE_CLIENT_ID;
+}
+
+let activeClientId = VSCODE_CLIENT_ID;
 const targetDir = process.argv[2] || process.cwd();
 const startTimestamp = Math.floor(Date.now() / 1000);
 let lastActivityTime = Date.now();
@@ -49,17 +63,20 @@ let lastTrackedTarget = "";
 
 const TEMPLATES = {
     thai: {
-        writing: (lang, file, sub) => `⚡ กำลังเขียน ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
+        writing: (lang, file, sub) => `🔥 กำลังเขียน ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
         reading: (lang, file, sub) => `📖 กำลังส่องโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
         running: (target) => `⚙️ กำลังรันคำสั่ง: ${target}`,
         searching: (query) => `🔍 กำลังค้นคว้า: ${query}`,
         planning: (task) => `🧠 กำลังวางแผนโค้ด: ${task}`,
-        idleLang: (lang) => `⚡ ลุยโปรเจกต์ ${lang}`,
+        idleLang: (lang) => `🔥 ลุยโปรเจกต์ ${lang}`,
         idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
         idleRoblox: (place) => `🎮 พัฒนาเกม Roblox: ${place}`,
         afkDetails: () => `☕ กำลังพักเบรก / AFK`,
         afkState: (user) => `พักสายตาแป๊บเดียว • 👤 ${user}`,
-        state: (user, folder, git, isRoblox) => `${isRoblox ? "🎮" : "👤"} ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        state: (user, folder, git, isRoblox) => {
+            if (git) return git;
+            return `${isRoblox ? "🎮" : "📁"} ${folder}`;
+        },
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`🌿 ${branch}`);
@@ -445,10 +462,13 @@ function connect(pipeIndex = 0) {
         return;
     }
 
+    const rbxInfo = getRobloxStudioInfo(targetDir);
+    activeClientId = getActiveClientId(rbxInfo);
+
     const pipePath = `\\\\.\\pipe\\discord-ipc-${pipeIndex}`;
     const s = net.connect(pipePath, () => {
         socket = s;
-        const payload = Buffer.from(JSON.stringify({ v: 1, client_id: CLIENT_ID }));
+        const payload = Buffer.from(JSON.stringify({ v: 1, client_id: activeClientId }));
         const header = Buffer.alloc(8);
         header.writeInt32LE(0, 0); // HANDSHAKE
         header.writeInt32LE(payload.length, 4);
@@ -527,10 +547,11 @@ function updatePresence() {
 
     const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
     const displayFolder = rbxInfo ? rbxInfo.placeTitle : folderName;
-    const state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo));
+    let state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo));
 
     if (isAfk) {
         details = t.afkDetails();
+        state = t.afkState(userTag);
         largeImage = "idle";
         largeText = `AFK (${config.afkTimeoutMinutes}m) • ${userTag}`;
     } else if (agent) {
