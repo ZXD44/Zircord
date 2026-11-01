@@ -28,6 +28,18 @@
       "type": "string",
       "description": "Custom developer profile or portfolio URL"
     },
+    "buttons": {
+      "type": "array",
+      "description": "Custom interactive Discord RPC buttons (max 2)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "maxLength": 32 },
+          "url": { "type": "string" }
+        },
+        "required": ["label", "url"]
+      }
+    },
     "showGitStats": {
       "type": "boolean",
       "default": true,

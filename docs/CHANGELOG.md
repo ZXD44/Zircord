@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.1] - 2026-11-01
+
+### Fixed
+- **Duplicate User Handle in State**: Fixed issue where daemon running in User Profile directory (`%USERPROFILE%`) produced `ZirconX @ ZirconX`; now automatically sanitizes root user folders to `เทอร์มินัล`.
+- **Mobile Discord Truncation**: Redesigned Thai layout for mobile screens—condensed Line 1 (`🔥 เขียนโค้ด: file.ext`) and Line 2 (`📁 Folder (branch) • ✏️ +ins -del`) to prevent ellipsis (`...`) on narrow cards.
+- **Diff Metric Aesthetics**: Redesigned Git diff stats from `+ins/-del` to clean `✏️ +ins -del`.
+- **Interactive Buttons**: Guaranteed 2 persistent buttons in 100% Thai without emojis (`ดูโค้ดบน GitHub`, `โปรไฟล์ ZirconX`, `โปรเจกต์ Zircord`) when other users view the profile card.
+- **Custom Buttons**: Added `buttons` array support to `config/zircord.schema.json`.
+
+---
+
 ## [2.0.0] - 2026-11-01
 
 ### Changed

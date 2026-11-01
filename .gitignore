@@ -8,6 +8,7 @@ yarn-error.log*
 target/
 **/*.rs.bk
 *.pdb
+Cargo.lock
 
 # Logs
 *.log
