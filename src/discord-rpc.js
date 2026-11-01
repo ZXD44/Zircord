@@ -74,8 +74,9 @@ const TEMPLATES = {
         afkDetails: () => `☕ กำลังพักเบรก / AFK`,
         afkState: (user) => `พักสายตาแป๊บเดียว • 👤 ${user}`,
         state: (user, folder, git, isRoblox) => {
-            if (git) return git;
-            return `${isRoblox ? "🎮" : "📁"} ${folder}`;
+            const prefix = isRoblox ? `🎮 ${folder} • 👤 ${user}` : `👤 ${user}`;
+            if (git) return `${prefix} • ${git}`;
+            return `${prefix} @ ${folder}`;
         },
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
