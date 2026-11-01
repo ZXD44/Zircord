@@ -19,6 +19,9 @@
 ## ⚡ Features (จุดเด่น)
 
 * 🧠 **Live Smart Context**: ตรวจจับภาษาโค้ดและชื่อไฟล์ที่กำลังเขียนจริงแบบเรียลไทม์ (รองรับทั้งการเขียนเองใน Vim/Nano/VSCode หรือผ่าน AI Agents)
+* 🎮 **Roblox Studio & Luau Integration**: ตรวจจับโปรเจกต์ Roblox อัตโนมัติ (Roblox Studio, Rojo `default.project.json`, Wally, Rokit)
+  * แยกประเภทสคริปต์ Luau เจาะจง: `Client Script`, `Server Script`, `Module Script`
+  * แสดงชื่อเกม/Place Name และสถานะ Rojo Sync บนการ์ด Discord ทันที
 * 🔘 **Interactive Buttons**: ปุ่มกดบนการ์ด Discord เชื่อมโยงไปยัง GitHub Repository และโปรไฟล์ผู้พัฒนาโดยตรง
 * 📊 **Git Diff Statistics**: แสดงจำนวนไฟล์และบรรทัดที่แก้ไขจริง `[+45/-12]` แบบเรียลไทม์
 * ☕ **Intelligent AFK Detection**: สลับสถานะเป็นโหมดพักสายตา/จิบกาแฟอัตโนมัติหากไม่มีการเคลื่อนไหวเกินเวลาที่กำหนด
