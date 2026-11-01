@@ -7,6 +7,7 @@ yarn-error.log*
 # Rust build artifacts
 target/
 **/*.rs.bk
+*.pdb
 
 # Logs
 *.log

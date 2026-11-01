@@ -11,8 +11,9 @@ fn main() {
     let localappdata = env::var("LOCALAPPDATA").unwrap_or_default();
 
     // Priority order to locate discord-rpc.js on ANY user's machine:
-    let candidate_1 = env::var("CLICORD_SCRIPT").unwrap_or_default();
-    let candidate_2 = format!(r"{}\Documents\clicord\src\discord-rpc.js", userprofile);
+    let candidate_1 = env::var("ZIRCORD_SCRIPT").or_else(|_| env::var("CLICORD_SCRIPT")).unwrap_or_default();
+    let candidate_2 = format!(r"{}\Documents\zircord\src\discord-rpc.js", userprofile);
+    let candidate_2b = format!(r"{}\Documents\clicord\src\discord-rpc.js", userprofile);
     let candidate_3 = format!(r"{}\.gemini\scripts\discord-rpc.js", userprofile);
     let candidate_4 = r"src\discord-rpc.js".to_string();
 
@@ -20,6 +21,8 @@ fn main() {
         Some(candidate_1)
     } else if Path::new(&candidate_2).exists() {
         Some(candidate_2)
+    } else if Path::new(&candidate_2b).exists() {
+        Some(candidate_2b)
     } else if Path::new(&candidate_3).exists() {
         Some(candidate_3)
     } else if Path::new(&candidate_4).exists() {
