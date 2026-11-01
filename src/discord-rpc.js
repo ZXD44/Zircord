@@ -19,6 +19,7 @@ function loadConfig() {
         showButtons: true,
         profileUrl: "https://github.com/ZirconX",
         showGitStats: true,
+        enableRobloxDetection: true,
         customStatus: ""
     };
 
@@ -43,16 +44,17 @@ let lastTrackedTarget = "";
 
 const TEMPLATES = {
     thai: {
-        writing: (lang, file) => `⚡ กำลังเขียน ${lang}: ${file}`,
-        reading: (lang, file) => `📖 กำลังส่องโค้ด: ${file}`,
+        writing: (lang, file, sub) => `⚡ กำลังเขียน ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
+        reading: (lang, file, sub) => `📖 กำลังส่องโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
         running: (target) => `⚙️ กำลังรันคำสั่ง: ${target}`,
         searching: (query) => `🔍 กำลังค้นคว้า: ${query}`,
         planning: (task) => `🧠 กำลังวางแผนโค้ด: ${task}`,
         idleLang: (lang) => `⚡ ลุยโปรเจกต์ ${lang}`,
         idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
+        idleRoblox: (place) => `🎮 พัฒนาเกม Roblox: ${place}`,
         afkDetails: () => `☕ กำลังพักเบรก / AFK`,
         afkState: (user) => `พักสายตาแป๊บเดียว • 👤 ${user}`,
-        state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        state: (user, folder, git, isRoblox) => `${isRoblox ? "🎮" : "👤"} ${user} @ ${folder}${git ? ` (${git})` : ""}`,
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`🌿 ${branch}`);
@@ -64,16 +66,17 @@ const TEMPLATES = {
         }
     },
     modern: {
-        writing: (lang, file) => `⚡ Writing ${lang}: ${file}`,
-        reading: (lang, file) => `📖 Reading: ${file} (${lang})`,
+        writing: (lang, file, sub) => `⚡ Writing ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
+        reading: (lang, file, sub) => `📖 Reading: ${file} (${lang})`,
         running: (target) => `⚙️ Executing: ${target}`,
         searching: (query) => `🔍 Researching: ${query}`,
         planning: (task) => `🧠 Architecting: ${task}`,
         idleLang: (lang) => `⚡ Developing ${lang} Project`,
         idleGeneric: (folder) => `💻 Crafting in ${folder}`,
+        idleRoblox: (place) => `🎮 Building Roblox: ${place}`,
         afkDetails: () => `☕ On a Coffee Break / AFK`,
         afkState: (user) => `Taking a short rest • 👤 ${user}`,
-        state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        state: (user, folder, git, isRoblox) => `${isRoblox ? "🎮" : "👤"} ${user} @ ${folder}${git ? ` (${git})` : ""}`,
         gitFormat: (branch, dirty, diff) => {
             const parts = [];
             if (branch) parts.push(`🌿 ${branch}`);
@@ -85,13 +88,14 @@ const TEMPLATES = {
         }
     },
     cyber: {
-        writing: (lang, file) => `⚡ [DEV] ${lang} // ${file}`,
+        writing: (lang, file, sub) => `⚡ [DEV] ${lang}${sub ? `:${sub}` : ""} // ${file}`,
         reading: (lang, file) => `👁️ [INSPECT] ${file}`,
         running: (target) => `🔥 [EXEC] ${target}`,
         searching: (query) => `📡 [SCAN] ${query}`,
         planning: (task) => `🧬 [MATRIX] ${task}`,
         idleLang: (lang) => `⚡ [ONLINE] ${lang} Node`,
         idleGeneric: (folder) => `💻 [IDLE] ${folder} Shell`,
+        idleRoblox: (place) => `🎮 [ROBLOX] ${place}`,
         afkDetails: () => `💤 [STANDBY] Node Idle`,
         afkState: (user) => `root@${user} // sleep_mode`,
         state: (user, folder, git) => `root@${user} // ${folder}${git ? ` [${git}]` : ""}`,
@@ -106,13 +110,14 @@ const TEMPLATES = {
         }
     },
     cozy: {
-        writing: (lang, file) => `☕ จิบกาแฟปั่น ${lang}: ${file}`,
+        writing: (lang, file, sub) => `☕ จิบกาแฟปั่น ${lang}: ${file}`,
         reading: (lang, file) => `📚 นั่งอ่านโค้ด: ${file}`,
         running: (target) => `🔨 เทสต์ระบบ: ${target}`,
         searching: (query) => `🔎 ส่องไอเดีย: ${query}`,
         planning: (task) => `💭 วางแผนทำของเจ๋งๆ`,
         idleLang: (lang) => `🍃 ชิลล์ๆ กับ ${lang}`,
         idleGeneric: (folder) => `✨ อยู่ในโฟลเดอร์ ${folder}`,
+        idleRoblox: (place) => `🎮 นั่งทำเกม Roblox: ${place}`,
         afkDetails: () => `☕ จิบชาพักผ่อน / AFK`,
         afkState: (user) => `🌱 ${user} กำลังพักผ่อน`,
         state: (user, folder, git) => `🌱 ${user} ใน ${folder}${git ? ` (${git})` : ""}`,
@@ -135,6 +140,7 @@ const LANG_MAP = {
     tsx: { icon: "tsx", name: "React TSX" },
     py: { icon: "python", name: "Python" },
     lua: { icon: "lua", name: "Luau" },
+    luau: { icon: "lua", name: "Luau" },
     rs: { icon: "rust", name: "Rust" },
     go: { icon: "go", name: "Go" },
     c: { icon: "c", name: "C" },
@@ -161,14 +167,78 @@ function cleanStr(s) {
     return s.toString().replace(/^["']|["']$/g, "").trim();
 }
 
+function getLuauScriptSubtype(filename) {
+    const lower = filename.toLowerCase();
+    if (lower.includes(".client.") || lower.includes(".local.")) return "Client";
+    if (lower.includes(".server.")) return "Server";
+    if (lower.endsWith(".luau") || lower.endsWith(".lua")) return "Module";
+    return "";
+}
+
+function getRobloxStudioInfo(target) {
+    if (!config.enableRobloxDetection) return null;
+
+    let studioRunning = false;
+    let placeTitle = null;
+
+    // 1. Check if RobloxStudio process is active
+    try {
+        const out = execSync('powershell -NoProfile -Command "Get-Process -Name *RobloxStudio* -ErrorAction SilentlyContinue | Select-Object -ExpandProperty MainWindowTitle"', {
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 1000
+        }).toString().trim();
+
+        if (out) {
+            studioRunning = true;
+            const match = out.replace(/^Roblox\s+Studio\s*[-–]\s*/i, "").trim();
+            if (match) placeTitle = match;
+        }
+    } catch {}
+
+    // 2. Check Rojo project config (default.project.json)
+    let rojoProjectName = null;
+    try {
+        const defaultProj = path.join(target, "default.project.json");
+        if (fs.existsSync(defaultProj)) {
+            const data = JSON.parse(fs.readFileSync(defaultProj, "utf8"));
+            rojoProjectName = data.name || null;
+        }
+    } catch {}
+
+    // 3. Check for .rbxl files or wally.toml / rokit.toml
+    let hasRobloxFiles = false;
+    try {
+        if (fs.existsSync(path.join(target, "wally.toml")) || fs.existsSync(path.join(target, "rokit.toml"))) {
+            hasRobloxFiles = true;
+        } else {
+            const files = fs.readdirSync(target);
+            hasRobloxFiles = files.some(f => f.endsWith(".rbxl") || f.endsWith(".rbxlx") || f.endsWith(".luau"));
+        }
+    } catch {}
+
+    if (studioRunning || rojoProjectName || hasRobloxFiles) {
+        return {
+            isRoblox: true,
+            studioRunning,
+            placeTitle: placeTitle || rojoProjectName || "Roblox Experience",
+            rojoProjectName,
+            hasRojo: Boolean(rojoProjectName)
+        };
+    }
+
+    return null;
+}
+
 function detectProjectLanguage(dir) {
     try {
+        const rbx = getRobloxStudioInfo(dir);
+        if (rbx) return { icon: "lua", name: "Roblox Luau", roblox: rbx };
+
         if (fs.existsSync(path.join(dir, "Cargo.toml"))) return LANG_MAP.rs;
         if (fs.existsSync(path.join(dir, "tsconfig.json"))) return LANG_MAP.ts;
         if (fs.existsSync(path.join(dir, "package.json"))) return LANG_MAP.js;
         if (fs.existsSync(path.join(dir, "requirements.txt")) || fs.existsSync(path.join(dir, "pyproject.toml"))) return LANG_MAP.py;
         if (fs.existsSync(path.join(dir, "go.mod"))) return LANG_MAP.go;
-        if (fs.existsSync(path.join(dir, "default.project.json")) || fs.existsSync(path.join(dir, "wally.toml"))) return LANG_MAP.lua;
 
         const files = fs.readdirSync(dir, { withFileTypes: true });
         const counts = {};
@@ -381,12 +451,12 @@ function connect(pipeIndex = 0) {
 function updatePresence() {
     if (!socket || socket.destroyed) return;
 
-    // Reload config if changed
     config = loadConfig();
     const t = TEMPLATES[config.theme] || TEMPLATES.thai;
-    const userTag = config.username || USER_TAG;
+    const userTag = config.username || "ZirconX";
     const folderName = path.basename(targetDir) || "Workspace";
     const branch = getGitInfo(targetDir);
+    const rbxInfo = getRobloxStudioInfo(targetDir);
     const projLang = detectProjectLanguage(targetDir);
     const agent = getAgentActivity();
     const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
@@ -399,35 +469,43 @@ function updatePresence() {
         lastTrackedTarget = currentActivityKey;
     }
 
-    // Check AFK condition
     const afkLimitMs = (config.afkTimeoutMinutes || 5) * 60 * 1000;
     const isAfk = Date.now() - lastActivityTime > afkLimitMs;
 
     let details = "";
-    let state = "";
     let largeImage = projLang.icon;
     let largeText = `${projLang.name} • ${userTag}`;
     let smallImage = "vscode";
     let smallText = `👤 ${userTag} • Clicord`;
 
+    if (rbxInfo) {
+        largeImage = "lua";
+        largeText = `Roblox Studio • ${rbxInfo.placeTitle}`;
+        smallImage = "vscode";
+        smallText = rbxInfo.hasRojo ? "Rojo Synced" : "Roblox Studio";
+    }
+
     const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
-    state = t.state(userTag, folderName, gitContext);
+    const displayFolder = rbxInfo ? rbxInfo.placeTitle : folderName;
+    const state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo));
 
     if (isAfk) {
-        // AFK Mode
         details = t.afkDetails();
-        state = t.afkState(userTag);
         largeImage = "idle";
         largeText = `AFK (${config.afkTimeoutMinutes}m) • ${userTag}`;
     } else if (agent) {
         const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
-        largeImage = lang.icon;
-        largeText = `${lang.name} • ${userTag}`;
+        if (!rbxInfo) {
+            largeImage = lang.icon;
+            largeText = `${lang.name} • ${userTag}`;
+        }
+
+        const subType = agent.ext === "luau" || agent.ext === "lua" ? getLuauScriptSubtype(agent.target) : "";
 
         if (agent.action === "Writing") {
-            details = t.writing(lang.name, agent.target);
+            details = t.writing(lang.name, agent.target, subType);
         } else if (agent.action === "Inspecting") {
-            details = t.reading(lang.name, agent.target);
+            details = t.reading(lang.name, agent.target, subType);
         } else if (agent.action === "Executing") {
             details = t.running(agent.target);
         } else if (agent.action === "Researching") {
@@ -437,18 +515,22 @@ function updatePresence() {
         }
     } else if (wsMod && wsMod.file) {
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
-        largeImage = lang.icon;
-        largeText = `${lang.name} • ${userTag}`;
-        details = t.writing(lang.name, wsMod.file);
+        if (!rbxInfo) {
+            largeImage = lang.icon;
+            largeText = `${lang.name} • ${userTag}`;
+        }
+        const subType = wsMod.ext === "luau" || wsMod.ext === "lua" ? getLuauScriptSubtype(wsMod.file) : "";
+        details = t.writing(lang.name, wsMod.file, subType);
     } else {
-        if (projLang.name !== "Multi-Language") {
+        if (rbxInfo) {
+            details = t.idleRoblox(rbxInfo.placeTitle);
+        } else if (projLang.name !== "Multi-Language") {
             details = t.idleLang(projLang.name);
         } else {
             details = t.idleGeneric(folderName);
         }
     }
 
-    // Interactive Buttons setup (Max 2)
     const buttons = [];
     if (config.showButtons) {
         const remoteUrl = getGitRemoteUrl(targetDir);

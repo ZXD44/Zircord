@@ -6,5 +6,6 @@
   "showButtons": true,
   "profileUrl": "https://github.com/ZirconX",
   "showGitStats": true,
+  "enableRobloxDetection": true,
   "customStatus": ""
 }
