@@ -4,15 +4,39 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 // ==========================================
-// 🎨 CONFIGURATION & THEMES
+// ⚙️ CONFIGURATION LOADER (agycord.json)
 // ==========================================
-// เลือกธีมที่ชอบ: "thai" | "modern" | "cyber" | "cozy"
-const THEME = process.env.AGY_THEME || "thai"; 
+const userHome = process.env.USERPROFILE || "";
+const globalConfigPath = path.join(userHome, ".gemini", "agycord.json");
+const localConfigPath = path.join(process.cwd(), "agycord.json");
 
+function loadConfig() {
+    let cfg = {
+        theme: "thai",
+        username: process.env.AGY_USER || process.env.USERNAME || "ZirconX",
+        afkTimeoutMinutes: 5,
+        showButtons: true,
+        profileUrl: "https://github.com/ZirconX",
+        showGitStats: true,
+        customStatus: ""
+    };
+
+    try {
+        if (fs.existsSync(localConfigPath)) {
+            cfg = { ...cfg, ...JSON.parse(fs.readFileSync(localConfigPath, "utf8")) };
+        } else if (fs.existsSync(globalConfigPath)) {
+            cfg = { ...cfg, ...JSON.parse(fs.readFileSync(globalConfigPath, "utf8")) };
+        }
+    } catch {}
+    return cfg;
+}
+
+let config = loadConfig();
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
-const USER_TAG = process.env.AGY_USER || process.env.USERNAME || "ZirconX";
 const targetDir = process.argv[2] || process.cwd();
 const startTimestamp = Math.floor(Date.now() / 1000);
+let lastActivityTime = Date.now();
+let lastTrackedTarget = "";
 
 const TEMPLATES = {
     thai: {
@@ -23,8 +47,18 @@ const TEMPLATES = {
         planning: (task) => `🧠 กำลังวางแผนโค้ด: ${task}`,
         idleLang: (lang) => `⚡ ลุยโปรเจกต์ ${lang}`,
         idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
+        afkDetails: () => `☕ กำลังพักเบรก / AFK`,
+        afkState: (user) => `พักสายตาแป๊บเดียว • 👤 ${user}`,
         state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
-        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `✏️ แก้ไป ${dirty} ไฟล์` : ""].filter(Boolean).join(" • ")
+        gitFormat: (branch, dirty, diff) => {
+            const parts = [];
+            if (branch) parts.push(`🌿 ${branch}`);
+            if (dirty) {
+                const diffStr = diff ? ` [${diff}]` : "";
+                parts.push(`✏️ แก้ไป ${dirty} ไฟล์${diffStr}`);
+            }
+            return parts.join(" • ");
+        }
     },
     modern: {
         writing: (lang, file) => `⚡ Writing ${lang}: ${file}`,
@@ -34,8 +68,18 @@ const TEMPLATES = {
         planning: (task) => `🧠 Architecting: ${task}`,
         idleLang: (lang) => `⚡ Developing ${lang} Project`,
         idleGeneric: (folder) => `💻 Crafting in ${folder}`,
+        afkDetails: () => `☕ On a Coffee Break / AFK`,
+        afkState: (user) => `Taking a short rest • 👤 ${user}`,
         state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
-        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `⚡ ${dirty} modified` : ""].filter(Boolean).join(" • ")
+        gitFormat: (branch, dirty, diff) => {
+            const parts = [];
+            if (branch) parts.push(`🌿 ${branch}`);
+            if (dirty) {
+                const diffStr = diff ? ` [${diff}]` : "";
+                parts.push(`⚡ ${dirty} modified${diffStr}`);
+            }
+            return parts.join(" • ");
+        }
     },
     cyber: {
         writing: (lang, file) => `⚡ [DEV] ${lang} // ${file}`,
@@ -45,8 +89,18 @@ const TEMPLATES = {
         planning: (task) => `🧬 [MATRIX] ${task}`,
         idleLang: (lang) => `⚡ [ONLINE] ${lang} Node`,
         idleGeneric: (folder) => `💻 [IDLE] ${folder} Shell`,
+        afkDetails: () => `💤 [STANDBY] Node Idle`,
+        afkState: (user) => `root@${user} // sleep_mode`,
         state: (user, folder, git) => `root@${user} // ${folder}${git ? ` [${git}]` : ""}`,
-        gitFormat: (branch, dirty) => [branch ? `git:${branch}` : "", dirty ? `dirty:${dirty}` : "clean"].filter(Boolean).join(" | ")
+        gitFormat: (branch, dirty, diff) => {
+            const parts = [];
+            if (branch) parts.push(`git:${branch}`);
+            if (dirty) {
+                const diffStr = diff ? `:${diff}` : "";
+                parts.push(`dirty:${dirty}${diffStr}`);
+            }
+            return parts.join(" | ");
+        }
     },
     cozy: {
         writing: (lang, file) => `☕ จิบกาแฟปั่น ${lang}: ${file}`,
@@ -56,8 +110,18 @@ const TEMPLATES = {
         planning: (task) => `💭 วางแผนทำของเจ๋งๆ`,
         idleLang: (lang) => `🍃 ชิลล์ๆ กับ ${lang}`,
         idleGeneric: (folder) => `✨ อยู่ในโฟลเดอร์ ${folder}`,
+        afkDetails: () => `☕ จิบชาพักผ่อน / AFK`,
+        afkState: (user) => `🌱 ${user} กำลังพักผ่อน`,
         state: (user, folder, git) => `🌱 ${user} ใน ${folder}${git ? ` (${git})` : ""}`,
-        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `✏️ แก้ไป ${dirty} จุด` : ""].filter(Boolean).join(" • ")
+        gitFormat: (branch, dirty, diff) => {
+            const parts = [];
+            if (branch) parts.push(`🌿 ${branch}`);
+            if (dirty) {
+                const diffStr = diff ? ` [${diff}]` : "";
+                parts.push(`✏️ แก้ไป ${dirty} จุด${diffStr}`);
+            }
+            return parts.join(" • ");
+        }
     }
 };
 
@@ -132,8 +196,46 @@ function getGitInfo(dir) {
     }
 }
 
+function getGitRemoteUrl(dir) {
+    try {
+        let url = execSync("git config --get remote.origin.url", {
+            cwd: dir,
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 1000
+        }).toString().trim();
+        if (!url) return null;
+        if (url.startsWith("git@")) {
+            url = url.replace(":", "/").replace("git@", "https://");
+        }
+        if (url.endsWith(".git")) {
+            url = url.slice(0, -4);
+        }
+        return url.startsWith("http") ? url : null;
+    } catch {
+        return null;
+    }
+}
+
+function getGitDiffStats(dir) {
+    try {
+        const out = execSync("git diff --shortstat", {
+            cwd: dir,
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 1000
+        }).toString().trim();
+        if (!out) return null;
+        const ins = out.match(/(\d+)\s+insertion/);
+        const del = out.match(/(\d+)\s+deletion/);
+        const plus = ins ? `+${ins[1]}` : "+0";
+        const minus = del ? `-${del[1]}` : "-0";
+        return `${plus}/${minus}`;
+    } catch {
+        return null;
+    }
+}
+
 function getAgentActivity() {
-    const brainDir = path.join(process.env.USERPROFILE || "", ".gemini", "antigravity-cli", "brain");
+    const brainDir = path.join(userHome, ".gemini", "antigravity-cli", "brain");
     if (!fs.existsSync(brainDir)) return null;
 
     try {
@@ -276,26 +378,48 @@ function connect(pipeIndex = 0) {
 function updatePresence() {
     if (!socket || socket.destroyed) return;
 
-    const t = TEMPLATES[THEME] || TEMPLATES.thai;
+    // Reload config if changed
+    config = loadConfig();
+    const t = TEMPLATES[config.theme] || TEMPLATES.thai;
+    const userTag = config.username || USER_TAG;
     const folderName = path.basename(targetDir) || "Workspace";
     const branch = getGitInfo(targetDir);
     const projLang = detectProjectLanguage(targetDir);
     const agent = getAgentActivity();
     const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
+    const diffStats = config.showGitStats ? getGitDiffStats(targetDir) : null;
+
+    // Track active changes for AFK calculation
+    const currentActivityKey = (agent ? `${agent.action}:${agent.target}` : "") + (wsMod?.file || "");
+    if (currentActivityKey && currentActivityKey !== lastTrackedTarget) {
+        lastActivityTime = Date.now();
+        lastTrackedTarget = currentActivityKey;
+    }
+
+    // Check AFK condition
+    const afkLimitMs = (config.afkTimeoutMinutes || 5) * 60 * 1000;
+    const isAfk = Date.now() - lastActivityTime > afkLimitMs;
 
     let details = "";
+    let state = "";
     let largeImage = projLang.icon;
-    let largeText = `${projLang.name} • ${USER_TAG}`;
+    let largeText = `${projLang.name} • ${userTag}`;
     let smallImage = "vscode";
-    let smallText = `👤 ${USER_TAG}`;
+    let smallText = `👤 ${userTag}`;
 
-    const gitContext = t.gitFormat(branch, wsMod?.totalDirty);
-    const state = t.state(USER_TAG, folderName, gitContext);
+    const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
+    state = t.state(userTag, folderName, gitContext);
 
-    if (agent) {
+    if (isAfk) {
+        // AFK Mode
+        details = t.afkDetails();
+        state = t.afkState(userTag);
+        largeImage = "idle";
+        largeText = `AFK (${config.afkTimeoutMinutes}m) • ${userTag}`;
+    } else if (agent) {
         const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
         largeImage = lang.icon;
-        largeText = `${lang.name} • ${USER_TAG}`;
+        largeText = `${lang.name} • ${userTag}`;
 
         if (agent.action === "Writing") {
             details = t.writing(lang.name, agent.target);
@@ -311,13 +435,25 @@ function updatePresence() {
     } else if (wsMod && wsMod.file) {
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
         largeImage = lang.icon;
-        largeText = `${lang.name} • ${USER_TAG}`;
+        largeText = `${lang.name} • ${userTag}`;
         details = t.writing(lang.name, wsMod.file);
     } else {
         if (projLang.name !== "Multi-Language") {
             details = t.idleLang(projLang.name);
         } else {
             details = t.idleGeneric(folderName);
+        }
+    }
+
+    // Interactive Buttons setup (Max 2)
+    const buttons = [];
+    if (config.showButtons) {
+        const remoteUrl = getGitRemoteUrl(targetDir);
+        if (remoteUrl) {
+            buttons.push({ label: "📂 ดูโค้ดบน GitHub", url: remoteUrl });
+        }
+        if (config.profileUrl && buttons.length < 2) {
+            buttons.push({ label: `👤 ${userTag} Profile`, url: config.profileUrl });
         }
     }
 
@@ -335,6 +471,10 @@ function updatePresence() {
         },
         instance: false
     };
+
+    if (buttons.length > 0) {
+        activity.buttons = buttons;
+    }
 
     const payload = Buffer.from(JSON.stringify({
         cmd: "SET_ACTIVITY",

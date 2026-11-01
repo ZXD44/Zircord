@@ -23,10 +23,15 @@ Write-Host "[1/4] Deploying AgyCord RPC engine..." -ForegroundColor Yellow
 Copy-Item (Join-Path $projDir "src\discord-rpc.js") (Join-Path $targetScripts "discord-rpc.js") -Force
 
 # 2. Copy Executables & Wrappers
-Write-Host "[2/4] Deploying universal shims (agy.exe, agy.cmd, agy)..." -ForegroundColor Yellow
+Write-Host "[2/4] Deploying universal shims and CLI watchers..." -ForegroundColor Yellow
 Copy-Item (Join-Path $projDir "bin\agy.exe") (Join-Path $targetBin "agy.exe") -Force
 Copy-Item (Join-Path $projDir "bin\agy.cmd") (Join-Path $targetBin "agy.cmd") -Force
 Copy-Item (Join-Path $projDir "bin\agy") (Join-Path $targetBin "agy") -Force
+Copy-Item (Join-Path $projDir "bin\agycord.cmd") (Join-Path $targetBin "agycord.cmd") -Force
+Copy-Item (Join-Path $projDir "bin\agycord") (Join-Path $targetBin "agycord") -Force
+if (-not (Test-Path (Join-Path $userProfile ".gemini\agycord.json"))) {
+    Copy-Item (Join-Path $projDir "agycord.json") (Join-Path $userProfile ".gemini\agycord.json") -Force
+}
 
 # 3. Add to User PATH if not present
 Write-Host "[3/4] Configuring Environment PATH..." -ForegroundColor Yellow
