@@ -181,17 +181,14 @@ function getRobloxStudioInfo(target) {
     let studioRunning = false;
     let placeTitle = null;
 
-    // 1. Check if RobloxStudio process is active
+    // 1. Ultra-fast process check using native tasklist (10ms)
     try {
-        const out = execSync('powershell -NoProfile -Command "Get-Process -Name *RobloxStudio* -ErrorAction SilentlyContinue | Select-Object -ExpandProperty MainWindowTitle"', {
+        const out = execSync('tasklist /FI "IMAGENAME eq RobloxStudioBeta.exe" /NH', {
             stdio: ["ignore", "pipe", "ignore"],
-            timeout: 1000
-        }).toString().trim();
-
-        if (out) {
+            timeout: 2000
+        }).toString();
+        if (out.includes("RobloxStudioBeta.exe")) {
             studioRunning = true;
-            const match = out.replace(/^Roblox\s+Studio\s*[-–]\s*/i, "").trim();
-            if (match) placeTitle = match;
         }
     } catch {}
 
@@ -205,7 +202,7 @@ function getRobloxStudioInfo(target) {
         }
     } catch {}
 
-    // 3. Check for .rbxl files or wally.toml / rokit.toml
+    // 3. Check for .rbxl files or wally.toml / rokit.toml in target
     let hasRobloxFiles = false;
     try {
         if (fs.existsSync(path.join(target, "wally.toml")) || fs.existsSync(path.join(target, "rokit.toml"))) {
@@ -215,6 +212,33 @@ function getRobloxStudioInfo(target) {
             hasRobloxFiles = files.some(f => f.endsWith(".rbxl") || f.endsWith(".rbxlx") || f.endsWith(".luau"));
         }
     } catch {}
+
+    // 4. Try reading latest place title from Roblox Studio logs if available
+    if (studioRunning && !rojoProjectName) {
+        try {
+            const logsDir = path.join(process.env.LOCALAPPDATA || "", "Roblox", "logs");
+            if (fs.existsSync(logsDir)) {
+                const files = fs.readdirSync(logsDir)
+                    .filter(f => f.endsWith(".log") && (f.includes("_Studio_") || f.includes(".745.")))
+                    .map(f => ({ name: f, time: fs.statSync(path.join(logsDir, f)).mtimeMs }))
+                    .sort((a, b) => b.time - a.time);
+
+                if (files.length > 0) {
+                    const latestLog = path.join(logsDir, files[0].name);
+                    const stat = fs.statSync(latestLog);
+                    const readSize = Math.min(stat.size, 32768);
+                    const buf = Buffer.alloc(readSize);
+                    const fd = fs.openSync(latestLog, "r");
+                    fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+                    fs.closeSync(fd);
+                    const content = buf.toString("utf8");
+                    const match = content.match(/Loaded place\s+([^\r\n,]+)/i) ||
+                                  content.match(/Opening place\s+([^\r\n,]+)/i);
+                    if (match) placeTitle = match[1].trim();
+                }
+            }
+        } catch {}
+    }
 
     if (studioRunning || rojoProjectName || hasRobloxFiles) {
         return {
