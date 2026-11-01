@@ -1,0 +1,10 @@
+{
+  "$schema": "./agycord.schema.json",
+  "theme": "thai",
+  "username": "ZirconX",
+  "afkTimeoutMinutes": 5,
+  "showButtons": true,
+  "profileUrl": "https://github.com/ZirconX",
+  "showGitStats": true,
+  "customStatus": ""
+}
