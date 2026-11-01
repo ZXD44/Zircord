@@ -8,17 +8,22 @@ const { execSync, spawn } = require("child_process");
 // ==========================================
 const userHome = process.env.USERPROFILE || process.env.HOME || "";
 const localAppData = process.env.LOCALAPPDATA || path.join(userHome, "AppData", "Local");
-const globalConfigPath = path.join(userHome, ".gemini", "clicord.json");
-const localConfigPath = path.join(process.cwd(), "clicord.json");
-const pidFile = path.join(userHome, ".gemini", "clicord.pid");
+const globalConfigPath = fs.existsSync(path.join(userHome, ".gemini", "zircord.json"))
+    ? path.join(userHome, ".gemini", "zircord.json")
+    : path.join(userHome, ".gemini", "clicord.json");
+const localConfigPath = fs.existsSync(path.join(process.cwd(), "zircord.json"))
+    ? path.join(process.cwd(), "zircord.json")
+    : path.join(process.cwd(), "clicord.json");
+const pidFile = path.join(userHome, ".gemini", "zircord.pid");
 
 function loadConfig() {
     // Dynamic defaults for ANY user on ANY machine
-    const defaultUser = process.env.CLICORD_USER || 
+    const defaultUser = process.env.ZIRCORD_USER ||
+                        process.env.CLICORD_USER || 
                         process.env.AGY_USER || 
                         process.env.USERNAME || 
                         process.env.USER || 
-                        "Developer";
+                        "ZirconX";
 
     let cfg = {
         theme: "thai",
@@ -73,7 +78,7 @@ function handleCliCommands() {
             }
         } catch {}
 
-        console.log(killed ? "✅ Clicord daemon stopped." : "ℹ️ No running Clicord daemon found.");
+        console.log(killed ? "✅ Zircord daemon stopped." : "ℹ️ No running Zircord daemon found.");
         process.exit(0);
     }
 
@@ -93,7 +98,7 @@ function handleCliCommands() {
             }
         } catch {}
 
-        console.log("🌌 Clicord Rich Presence Status:");
+        console.log("🌌 Zircord Rich Presence Status:");
         if (isRunning) {
             console.log(`  ● Daemon:    RUNNING (PID: ${pid})`);
             console.log(`  ● Directory: ${dir || process.cwd()}`);
@@ -101,7 +106,7 @@ function handleCliCommands() {
             console.log(`  ● User:      ${config.username}`);
         } else {
             console.log("  ○ Daemon:    STOPPED");
-            console.log("  💡 Run 'clicord' or 'clicord start' to launch.");
+            console.log("  💡 Run 'zircord' or 'zircord start' to launch.");
         }
         process.exit(0);
     }
@@ -123,24 +128,27 @@ function handleCliCommands() {
             child.unref();
         }
 
-        console.log(`🚀 Clicord daemon started in background.`);
+        console.log(`🚀 Zircord daemon started in background.`);
         console.log(`📁 Monitoring: ${target}`);
         process.exit(0);
     }
 
     if (cmd === "--help" || cmd === "-h" || cmd === "help") {
         console.log(`
-🌌 Clicord - Intelligent Discord Rich Presence for Terminal & Any CLI
+🌌 Zircord - Intelligent Discord Rich Presence for Terminal & Any CLI
 
 Usage:
-  clicord [path]        Run Clicord monitoring current or target folder
-  clicord start [path]  Start Clicord daemon in background
-  clicord stop          Stop all running Clicord daemon processes
-  clicord status        Show running daemon status
-  clicord --help        Show this help message
+  zircord [path]        Run Zircord monitoring current or target folder
+  zircord start [path]  Start Zircord daemon in background
+  zircord stop          Stop all running Zircord daemon processes
+  zircord status        Show running daemon status
+  zircord --help        Show this help message
+
+Aliases:
+  clicord (backward-compatible)
 
 Configuration:
-  clicord.json (in current directory or ~/.gemini/clicord.json)
+  zircord.json (in current directory or ~/.gemini/zircord.json)
 `);
         process.exit(0);
     }
@@ -701,7 +709,7 @@ function updatePresence() {
     let largeImage = projLang.icon;
     let largeText = `${projLang.name} • ${userTag}`;
     let smallImage = "vscode";
-    let smallText = `👤 ${userTag} • Clicord`;
+    let smallText = `👤 ${userTag} • Zircord`;
 
     if (rbxInfo) {
         largeImage = "lua";

@@ -1,9 +1,19 @@
 # Changelog
 
-All notable changes to the **Clicord** project will be documented in this file.
+All notable changes to the **Zircord** project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.0.0] - 2026-11-01
+
+### Changed
+- **Rebranded to Zircord**: Official signature project naming by ZirconX.
+- Renamed CLI commands to `zircord` (retaining `clicord` as an alias for backwards compatibility).
+- Configuration now loads `zircord.json` with fallback to `clicord.json`.
+- State file moved to `zircord.pid`.
 
 ---
 
