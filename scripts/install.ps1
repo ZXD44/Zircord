@@ -20,7 +20,8 @@ New-Item -ItemType Directory -Path $targetBin, $targetScripts -Force | Out-Null
 
 # 1. Copy RPC Script
 Write-Host "[1/5] Deploying Zircord RPC engine..." -ForegroundColor Yellow
-Copy-Item (Join-Path $projDir "src\discord-rpc.js") (Join-Path $targetScripts "discord-rpc.js") -Force
+$engineScript = Join-Path $targetScripts "discord-rpc.js"
+Copy-Item (Join-Path $projDir "src\discord-rpc.js") $engineScript -Force
 
 # 2. Copy Executables & Wrappers
 Write-Host "[2/5] Deploying universal shims and CLI watchers..." -ForegroundColor Yellow
@@ -50,10 +51,9 @@ if ($userPath -notlike "*$targetBin*") {
 # 4. Configure Auto-Start on Windows Boot (No CLI Required)
 Write-Host "[4/5] Setting up Windows Auto-Start on Boot..." -ForegroundColor Yellow
 $startupFolder = [System.Environment]::GetFolderPath('Startup')
-$vbsPath = Join-Path $startupFolder "zircord.vbs"
-$engineScript = Join-Path $targetScripts "discord-rpc.js"
-$vbsScript = "Set WshShell = CreateObject(`"WScript.Shell`")`nWshShell.Run `"node `"`"`"$engineScript`"`"`" `"`"`"$userProfile`"`"`"`, 0, False"
-[System.IO.File]::WriteAllText($vbsPath, $vbsScript, [System.Text.Encoding]::ASCII)
+$startupTarget = Join-Path $startupFolder "zircord.vbs"
+$daemonVbs = Join-Path $PSScriptRoot "start-daemon.vbs"
+Copy-Item $daemonVbs $startupTarget -Force
 Write-Host "      Auto-start enabled! Zircord will silently run whenever Windows starts." -ForegroundColor Green
 
 # 5. Check Node.js and Launch Service Immediately
