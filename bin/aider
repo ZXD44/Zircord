@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+exec aider "$@"

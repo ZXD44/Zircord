@@ -1,7 +1,7 @@
 const net = require("net");
 const path = require("path");
 const fs = require("fs");
-const { execSync, spawn } = require("child_process");
+const { execSync, spawn, exec } = require("child_process");
 
 // ==========================================
 // ⚙️ UNIVERSAL CONFIGURATION LOADER
@@ -17,7 +17,6 @@ const localConfigPath = fs.existsSync(path.join(process.cwd(), "zircord.json"))
 const pidFile = path.join(userHome, ".gemini", "zircord.pid");
 
 function loadConfig() {
-    // Dynamic defaults for ANY user on ANY machine
     const defaultUser = process.env.ZIRCORD_USER ||
                         process.env.CLICORD_USER || 
                         process.env.AGY_USER || 
@@ -33,6 +32,9 @@ function loadConfig() {
         profileUrl: "",
         showGitStats: true,
         enableRobloxDetection: true,
+        enableFreebuffDetection: true,
+        enableAgentDetection: true,
+        enableCliDetection: true,
         clientId: ""
     };
 
@@ -49,8 +51,88 @@ function loadConfig() {
 let config = loadConfig();
 
 // ==========================================
-// 🕹️ CLI DAEMON CONTROL (start / stop / status)
+// ⚡ ASYNC NON-BLOCKING PROCESS SCANNER
 // ==========================================
+let cachedProcessNames = new Set();
+let isScanningProcesses = false;
+let lastProcessScanTime = 0;
+
+function refreshProcessListAsync() {
+    if (isScanningProcesses) return;
+    const now = Date.now();
+    if (now - lastProcessScanTime < 3000) return;
+
+    isScanningProcesses = true;
+    const cmd = process.platform === "win32" ? "tasklist /NH /FO CSV" : "ps -A -o comm=";
+    exec(cmd, { encoding: "utf8", timeout: 5000 }, (err, stdout) => {
+        isScanningProcesses = false;
+        lastProcessScanTime = Date.now();
+        if (err || !stdout) return;
+
+        const newSet = new Set();
+        if (process.platform === "win32") {
+            const lines = stdout.split(/\r?\n/);
+            for (const line of lines) {
+                const match = line.match(/^"([^"]+)"/);
+                if (match) {
+                    newSet.add(match[1].toLowerCase());
+                }
+            }
+        } else {
+            const lines = stdout.split("\n");
+            for (const line of lines) {
+                const trimmed = line.trim().toLowerCase();
+                if (trimmed) newSet.add(trimmed);
+            }
+        }
+        cachedProcessNames = newSet;
+    });
+}
+
+// Quick sync probe on startup for immediate detection
+try {
+    if (process.platform === "win32") {
+        const out = execSync("tasklist /NH /FO CSV", { encoding: "utf8", timeout: 2000 });
+        const lines = out.split(/\r?\n/);
+        for (const line of lines) {
+            const match = line.match(/^"([^"]+)"/);
+            if (match) cachedProcessNames.add(match[1].toLowerCase());
+        }
+    }
+} catch {}
+refreshProcessListAsync();
+
+// ==========================================
+// 🕹️ CLI DAEMON CONTROL (start / stop / status / run)
+// ==========================================
+function ensureDaemonRunning(targetDir) {
+    let isRunning = false;
+    try {
+        if (fs.existsSync(pidFile)) {
+            const info = JSON.parse(fs.readFileSync(pidFile, "utf8"));
+            if (info && info.pid) {
+                process.kill(info.pid, 0);
+                isRunning = true;
+            }
+        }
+    } catch {}
+
+    if (!isRunning) {
+        const scriptPath = __filename;
+        const target = targetDir ? path.resolve(targetDir) : process.cwd();
+        if (process.platform === "win32") {
+            const escapedScript = scriptPath.replace(/'/g, "''");
+            const escapedTarget = target.replace(/'/g, "''");
+            const nodeExe = process.execPath.replace(/'/g, "''");
+            const psCmd = `Start-Process -FilePath '${nodeExe}' -ArgumentList @('${escapedScript}', '${escapedTarget}') -WorkingDirectory '${escapedTarget}' -WindowStyle Hidden`;
+            try { execSync(`powershell -NoProfile -WindowStyle Hidden -Command "${psCmd}"`); } catch {}
+        } else {
+            const child = spawn(process.execPath, [scriptPath, target], { detached: true, stdio: "ignore" });
+            child.unref();
+        }
+    }
+}
+
 function handleCliCommands() {
     const rawCmd = process.argv[2] || "";
     const cmd = rawCmd.toLowerCase();
@@ -100,12 +182,35 @@ function handleCliCommands() {
 
         console.log("🌌 Zircord Rich Presence Status:");
         if (isRunning) {
-            console.log(`  ● Daemon:    RUNNING (PID: ${pid})`);
-            console.log(`  ● Directory: ${dir || process.cwd()}`);
-            console.log(`  ● Theme:     ${config.theme}`);
-            console.log(`  ● User:      ${config.username}`);
+            console.log(`  ● Daemon:      RUNNING (PID: ${pid})`);
+            console.log(`  ● Directory:   ${dir || process.cwd()}`);
+            console.log(`  ● Theme:       ${config.theme}`);
+            console.log(`  ● User:        ${config.username}`);
+            
+            // Show active detected CLI / agent
+            const detected = [];
+            const fb = getFreebuffActivity(dir || process.cwd());
+            if (fb) detected.push(`Freebuff AI (PID: ${fb.pid || "Active"}, Project: ${fb.projectName})`);
+            const agy = getAntigravityActivity();
+            if (agy) detected.push(`Antigravity Agent (${agy.action})`);
+            const otherAgent = getOtherAiAgentActivity();
+            if (otherAgent) detected.push(otherAgent.name);
+            const editor = getActiveTerminalEditor();
+            if (editor) detected.push(`Editor: ${editor}`);
+            const devCli = getActiveDevCli();
+            if (devCli) detected.push(`CLI Tool: ${devCli.name}`);
+            const shell = getActiveShell();
+            if (shell) detected.push(`Shell: ${shell}`);
+            const rbx = getRobloxStudioInfo(dir || process.cwd());
+            if (rbx) detected.push(`Roblox Studio (${rbx.placeTitle})`);
+
+            if (detected.length > 0) {
+                console.log(`  ● Active CLIs: ${detected.join(", ")}`);
+            } else {
+                console.log(`  ● Active CLIs: Terminal ready`);
+            }
         } else {
-            console.log("  ○ Daemon:    STOPPED");
+            console.log("  ○ Daemon:      STOPPED");
             console.log("  💡 Run 'zircord' or 'zircord start' to launch.");
         }
         process.exit(0);
@@ -118,7 +223,8 @@ function handleCliCommands() {
         if (process.platform === "win32") {
             const escapedScript = scriptPath.replace(/'/g, "''");
             const escapedTarget = target.replace(/'/g, "''");
-            const psCmd = `Start-Process -FilePath 'node' -ArgumentList @('${escapedScript}', '${escapedTarget}') -WorkingDirectory '${escapedTarget}' -WindowStyle Hidden`;
+            const nodeExe = process.execPath.replace(/'/g, "''");
+            const psCmd = `Start-Process -FilePath '${nodeExe}' -ArgumentList @('${escapedScript}', '${escapedTarget}') -WorkingDirectory '${escapedTarget}' -WindowStyle Hidden`;
             execSync(`powershell -NoProfile -WindowStyle Hidden -Command "${psCmd}"`);
         } else {
             const child = spawn(process.execPath, [scriptPath, target], {
@@ -133,16 +239,39 @@ function handleCliCommands() {
         process.exit(0);
     }
 
+    if (cmd === "run") {
+        const cliToRun = process.argv[3];
+        const cliArgs = process.argv.slice(4);
+        if (!cliToRun) {
+            console.log("Usage: zircord run <command> [args...]");
+            console.log("Example: zircord run freebuff");
+            console.log("         zircord run nvim");
+            console.log("         zircord run cargo test");
+            process.exit(1);
+        }
+        ensureDaemonRunning(process.cwd());
+        const proc = spawn(cliToRun, cliArgs, { stdio: "inherit", shell: true });
+        proc.on("exit", (code) => { process.exit(code || 0); });
+        return;
+    }
+
     if (cmd === "--help" || cmd === "-h" || cmd === "help") {
         console.log(`
 🌌 Zircord - Intelligent Discord Rich Presence for Terminal & Any CLI
 
 Usage:
-  zircord [path]        Run Zircord monitoring current or target folder
-  zircord start [path]  Start Zircord daemon in background
-  zircord stop          Stop all running Zircord daemon processes
-  zircord status        Show running daemon status
-  zircord --help        Show this help message
+  zircord [path]               Run Zircord monitoring current or target folder
+  zircord start [path]         Start Zircord daemon in background
+  zircord stop                 Stop all running Zircord daemon processes
+  zircord status               Show running daemon status & active CLIs
+  zircord run <cli> [args...]  Run any CLI with active Zircord tracking
+  zircord <cli> [args...]      Direct shortcut to run any CLI tool
+
+Supported CLIs & AI Agents:
+  • AI Agents: Freebuff, Claude Code, Cursor Agent, Aider, AGY, Gemini, OpenCode, Codex, Copilot, Goose, Ollama
+  • Editors:   Neovim, Vim, Helix, Micro, Nano, Emacs
+  • Dev Tools: Cargo, Bun, Deno, Docker, Kubernetes, Git, Python, Go, Node, Vitest
+  • Shells:    Windows Terminal, PowerShell 7, PowerShell, CMD, Bash, WSL, Nushell, Fish
 
 Aliases:
   clicord (backward-compatible)
@@ -152,6 +281,15 @@ Configuration:
 `);
         process.exit(0);
     }
+
+    // Auto-run fallback: If first argument is an executable/CLI and not a folder path
+    if (rawCmd && !fs.existsSync(rawCmd) && !["start", "stop", "status", "run", "--help", "-h", "help"].includes(cmd)) {
+        ensureDaemonRunning(process.cwd());
+        const cliArgs = process.argv.slice(3);
+        const proc = spawn(rawCmd, cliArgs, { stdio: "inherit", shell: true });
+        proc.on("exit", (code) => { process.exit(code || 0); });
+        return;
+    }
 }
 
 handleCliCommands();
@@ -159,7 +297,6 @@ handleCliCommands();
 // Default Application IDs:
 // - "383226320970055681" -> "Playing Visual Studio Code"
 // - "1199942284653903882" -> "Playing Roblox Studio"
-// - Custom ID in clicord.json -> "Playing <Your Custom App Name>"
 const VSCODE_CLIENT_ID = "383226320970055681";
 const ROBLOX_CLIENT_ID = "1199942284653903882";
 
@@ -199,6 +336,15 @@ let lastTrackedTarget = "";
 
 const TEMPLATES = {
     thai: {
+        freebuff: (project, prompt, action) => {
+            if (prompt) return `🤖 Freebuff: ${prompt}`;
+            if (action) return `🤖 Freebuff กำลัง${action}`;
+            return `🤖 Freebuff AI :: ${project}`;
+        },
+        aiAgent: (name, project, prompt) => prompt ? `🤖 ${name}: ${prompt}` : `🤖 ${name} พร้อมใช้งาน :: ${project}`,
+        cliTool: (name, folder, lang) => `⚙️ รัน: ${name}${lang ? ` (${lang})` : ""} :: ${folder}`,
+        cliEditor: (editor, file, folder) => file ? `🔥 ${editor} :: ${file}` : `🔥 ${editor} :: ${folder}`,
+        cliShell: (shell, folder) => `💻 ${shell} :: ${folder}`,
         writing: (lang, file, sub) => `🔥 เขียนโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
         reading: (lang, file, sub) => `📖 ส่องโค้ด: ${file}${sub ? ` (${sub})` : ""}`,
         running: (target) => `⚙️ รัน: ${target}`,
@@ -232,6 +378,11 @@ const TEMPLATES = {
         }
     },
     modern: {
+        freebuff: (project, prompt) => prompt ? `🤖 Freebuff: ${prompt}` : `🤖 Freebuff AI active in ${project}`,
+        aiAgent: (name, project, prompt) => prompt ? `🤖 ${name}: ${prompt}` : `🤖 ${name} active @ ${project}`,
+        cliTool: (name, folder, lang) => `⚡ Running ${name}${lang ? ` (${lang})` : ""} in ${folder}`,
+        cliEditor: (editor, file, folder) => file ? `⚡ ${editor} :: ${file}` : `⚡ ${editor} @ ${folder}`,
+        cliShell: (shell, folder) => `💻 ${shell} @ ${folder}`,
         writing: (lang, file, sub) => `⚡ Writing ${lang}${sub ? ` (${sub})` : ""}: ${file}`,
         reading: (lang, file, sub) => `📖 Reading: ${file} (${lang})`,
         running: (target) => `⚙️ Executing: ${target}`,
@@ -262,6 +413,11 @@ const TEMPLATES = {
         }
     },
     cyber: {
+        freebuff: (project, prompt) => prompt ? `🤖 [FREEBUFF] ${prompt}` : `🤖 [FREEBUFF] Neural Node :: ${project}`,
+        aiAgent: (name, project, prompt) => prompt ? `🤖 [${name.toUpperCase()}] ${prompt}` : `🤖 [${name.toUpperCase()}] Neural Active :: ${project}`,
+        cliTool: (name, folder) => `🔥 [EXEC:${name.toUpperCase()}] ${folder}`,
+        cliEditor: (editor, file) => `💻 [${editor.toUpperCase()}] ${file || "BUFFER"}`,
+        cliShell: (shell, folder) => `💻 [SHELL:${shell.toUpperCase()}] ${folder}`,
         writing: (lang, file, sub) => `⚡ [DEV] ${lang}${sub ? `:${sub}` : ""} // ${file}`,
         reading: (lang, file) => `👁️ [INSPECT] ${file}`,
         running: (target) => `🔥 [EXEC] ${target}`,
@@ -288,6 +444,11 @@ const TEMPLATES = {
         }
     },
     cozy: {
+        freebuff: (project, prompt) => prompt ? `🤖 Freebuff ช่วยเขียน: ${prompt}` : `🤖 ชวน Freebuff นั่งทำ ${project}`,
+        aiAgent: (name, project, prompt) => prompt ? `🤖 ${name} กำลังช่วย: ${prompt}` : `🤖 ชวน ${name} มาช่วยเขียนโค้ด`,
+        cliTool: (name, folder) => `🍃 รันคำสั่ง ${name} เพลินๆ ใน ${folder}`,
+        cliEditor: (editor, file) => file ? `☕ จิบกาแฟเปิด ${editor}: ${file}` : `☕ เปิด ${editor} พร้อมทำงาน`,
+        cliShell: (shell, folder) => `✨ เปิด ${shell} ใน ${folder}`,
         writing: (lang, file, sub) => `☕ จิบกาแฟปั่น ${lang}: ${file}`,
         reading: (lang, file) => `📚 นั่งอ่านโค้ด: ${file}`,
         running: (target) => `🔨 เทสต์ระบบ: ${target}`,
@@ -363,18 +524,10 @@ function getRobloxStudioInfo(target) {
     let studioRunning = false;
     let placeTitle = null;
 
-    // 1. Universal Process Check (Standard Roblox, Bloxstrap, Fishstrap)
-    try {
-        const out = execSync('tasklist /FI "IMAGENAME eq RobloxStudioBeta.exe" /FI "IMAGENAME eq RobloxStudio.exe" /NH', {
-            stdio: ["ignore", "pipe", "ignore"],
-            timeout: 2000
-        }).toString();
-        if (out.includes("RobloxStudioBeta.exe") || out.includes("RobloxStudio.exe")) {
-            studioRunning = true;
-        }
-    } catch {}
+    if (cachedProcessNames.has("robloxstudiobeta.exe") || cachedProcessNames.has("robloxstudio.exe")) {
+        studioRunning = true;
+    }
 
-    // 2. Universal Rojo project config (default.project.json)
     let rojoProjectName = null;
     try {
         const defaultProj = path.join(target, "default.project.json");
@@ -384,7 +537,6 @@ function getRobloxStudioInfo(target) {
         }
     } catch {}
 
-    // 3. Universal Roblox files detection (.rbxl, .rbxlx, wally, rokit, aftman)
     let hasRobloxFiles = false;
     try {
         if (fs.existsSync(path.join(target, "wally.toml")) || 
@@ -397,7 +549,6 @@ function getRobloxStudioInfo(target) {
         }
     } catch {}
 
-    // 4. Universal log scanner: check both Roblox\logs and Bloxstrap\Logs for ANY user
     if (studioRunning && !rojoProjectName) {
         const candidateLogDirs = [
             path.join(localAppData, "Roblox", "logs"),
@@ -524,7 +675,181 @@ function getGitDiffStats(dir) {
     }
 }
 
-function getAgentActivity() {
+// ==========================================
+// 🤖 FREEBUFF AI CODING AGENT DETECTOR
+// ==========================================
+function getFreebuffActivity(targetDir) {
+    if (config.enableFreebuffDetection === false) return null;
+    const manicodeDir = path.join(userHome, ".config", "manicode");
+    if (!fs.existsSync(manicodeDir)) return null;
+
+    try {
+        let isFreebuffRunning = false;
+        let freebuffOwnerPid = null;
+
+        // Check active session PID
+        const liveFiles = fs.readdirSync(manicodeDir).filter(f => f.startsWith("freebuff-live-") && f.endsWith(".json"));
+        for (const lf of liveFiles) {
+            try {
+                const liveData = JSON.parse(fs.readFileSync(path.join(manicodeDir, lf), "utf8"));
+                if (liveData && liveData.ownerPid) {
+                    try {
+                        process.kill(liveData.ownerPid, 0);
+                        isFreebuffRunning = true;
+                        freebuffOwnerPid = liveData.ownerPid;
+                        break;
+                    } catch {}
+                }
+            } catch {}
+        }
+
+        if (!isFreebuffRunning) {
+            if (cachedProcessNames.has("freebuff.exe")) {
+                isFreebuffRunning = true;
+            }
+        }
+
+        if (!isFreebuffRunning) return null;
+
+        const projectsDir = path.join(manicodeDir, "projects");
+        let activeProjectName = "";
+        let activeProjectCwd = "";
+        let activePrompt = "";
+        let activeTool = "";
+        let activeAction = "Coding";
+
+        if (fs.existsSync(projectsDir)) {
+            const projectFolders = fs.readdirSync(projectsDir, { withFileTypes: true })
+                .filter(d => d.isDirectory())
+                .map(d => {
+                    const p = path.join(projectsDir, d.name);
+                    let mtime = 0;
+                    try { mtime = fs.statSync(p).mtimeMs; } catch {}
+                    return { name: d.name, path: p, mtime };
+                })
+                .sort((a, b) => b.mtime - a.mtime);
+
+            if (projectFolders.length > 0) {
+                const latestProj = projectFolders[0];
+                activeProjectName = latestProj.name;
+
+                const chatsDir = path.join(latestProj.path, "chats");
+                if (fs.existsSync(chatsDir)) {
+                    const chatFolders = fs.readdirSync(chatsDir, { withFileTypes: true })
+                        .filter(d => d.isDirectory())
+                        .map(d => {
+                            const p = path.join(chatsDir, d.name);
+                            let mtime = 0;
+                            try { mtime = fs.statSync(p).mtimeMs; } catch {}
+                            return { name: d.name, path: p, mtime };
+                        })
+                        .sort((a, b) => b.mtime - a.mtime);
+
+                    if (chatFolders.length > 0) {
+                        const latestChat = chatFolders[0].path;
+
+                        // run-state.json holds projectRoot & cwd
+                        const runStatePath = path.join(latestChat, "run-state.json");
+                        if (fs.existsSync(runStatePath)) {
+                            try {
+                                const stat = fs.statSync(runStatePath);
+                                const readSize = Math.min(stat.size, 4096);
+                                const buf = Buffer.alloc(readSize);
+                                const fd = fs.openSync(runStatePath, "r");
+                                fs.readSync(fd, buf, 0, readSize, 0);
+                                fs.closeSync(fd);
+                                const text = buf.toString("utf8");
+                                const cwdMatch = text.match(/"cwd":"([^"]+)"/);
+                                if (cwdMatch) {
+                                    activeProjectCwd = cwdMatch[1].replace(/\\\\/g, "\\");
+                                }
+                            } catch {}
+                        }
+
+                        // chat-meta.json holds firstPrompt
+                        const metaPath = path.join(latestChat, "chat-meta.json");
+                        if (fs.existsSync(metaPath)) {
+                            try {
+                                const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+                                if (meta.firstPrompt) {
+                                    activePrompt = meta.firstPrompt.trim();
+                                }
+                            } catch {}
+                        }
+
+                        // chat-messages.json holds latest tool calls
+                        const msgPath = path.join(latestChat, "chat-messages.json");
+                        if (fs.existsSync(msgPath)) {
+                            try {
+                                const stat = fs.statSync(msgPath);
+                                const readSize = Math.min(stat.size, 8192);
+                                const buf = Buffer.alloc(readSize);
+                                const fd = fs.openSync(msgPath, "r");
+                                fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+                                fs.closeSync(fd);
+                                const snippet = buf.toString("utf8");
+                                const toolMatch = snippet.match(/"toolName":"([^"]+)"/g);
+                                if (toolMatch) {
+                                    const lastTool = toolMatch[toolMatch.length - 1].replace(/"toolName":"|"/g, "");
+                                    activeTool = lastTool;
+                                    if (lastTool === "edit_file" || lastTool === "write_file") activeAction = "Writing";
+                                    else if (lastTool === "read_files" || lastTool === "read_file") activeAction = "Inspecting";
+                                    else if (lastTool === "run_command") activeAction = "Executing";
+                                    else if (lastTool === "spawn_agents" || lastTool === "researcher-web") activeAction = "Researching";
+                                }
+                            } catch {}
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback prompt from message-history.json
+        if (!activePrompt) {
+            const histPath = path.join(manicodeDir, "message-history.json");
+            if (fs.existsSync(histPath)) {
+                try {
+                    const hist = JSON.parse(fs.readFileSync(histPath, "utf8"));
+                    if (Array.isArray(hist) && hist.length > 0) {
+                        const nonCmd = hist.filter(h => typeof h === "string" && !h.startsWith("/"));
+                        if (nonCmd.length > 0) {
+                            activePrompt = nonCmd[nonCmd.length - 1].trim();
+                        }
+                    }
+                } catch {}
+            }
+        }
+
+        if (activePrompt) {
+            activePrompt = activePrompt
+                .replace(/<[^>]*>/g, "")
+                .replace(/\r?\n/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+            if (activePrompt.length > 42) {
+                activePrompt = activePrompt.slice(0, 39) + "...";
+            }
+        }
+
+        return {
+            agent: "Freebuff",
+            isFreebuff: true,
+            projectName: activeProjectName || "Coding Project",
+            projectCwd: activeProjectCwd,
+            prompt: activePrompt,
+            action: activeAction,
+            tool: activeTool,
+            pid: freebuffOwnerPid
+        };
+    } catch {}
+    return null;
+}
+
+// ==========================================
+// 🧠 ANTIGRAVITY AGENT ACTIVITY DETECTOR
+// ==========================================
+function getAntigravityActivity() {
+    if (config.enableAgentDetection === false) return null;
     const brainDir = path.join(userHome, ".gemini", "antigravity-cli", "brain");
     if (!fs.existsSync(brainDir)) return null;
 
@@ -559,22 +884,106 @@ function getAgentActivity() {
             if (tool.name === "edit_file" || tool.name === "write_file") {
                 const target = cleanStr(path.basename(cleanStr(tool.args?.Path) || "code"));
                 const ext = path.extname(target).slice(1).toLowerCase();
-                return { action: "Writing", target, ext };
+                return { action: "Writing", target, ext, agent: "Antigravity" };
             } else if (tool.name === "run_command") {
                 const summary = cleanStr(tool.args?.toolSummary) || "Terminal Task";
-                return { action: "Executing", target: summary };
+                return { action: "Executing", target: summary, agent: "Antigravity" };
             } else if (tool.name === "search_web") {
                 const query = cleanStr(tool.args?.query).slice(0, 30);
-                return { action: "Researching", target: query };
+                return { action: "Researching", target: query, agent: "Antigravity" };
             } else if (tool.name === "read_file") {
                 const target = cleanStr(path.basename(cleanStr(tool.args?.Path) || ""));
                 const ext = path.extname(target).slice(1).toLowerCase();
-                return { action: "Inspecting", target, ext };
+                return { action: "Inspecting", target, ext, agent: "Antigravity" };
             }
         } else if (item.type === "USER_INPUT") {
-            return { action: "Architecting", target: "Planning Solution" };
+            return { action: "Architecting", target: "Planning Solution", agent: "Antigravity" };
         }
     } catch {}
+    return null;
+}
+
+// ==========================================
+// 🤖 OTHER AI CODING AGENTS (Claude, Cursor, Aider, etc.)
+// ==========================================
+function getOtherAiAgentActivity() {
+    if (config.enableAgentDetection === false) return null;
+    const p = cachedProcessNames;
+
+    if (p.has("claude.exe") || p.has("claude")) {
+        return { agent: "Claude Code", name: "Claude Code" };
+    }
+    if (p.has("cursor.exe") || p.has("cursor-agent.exe") || p.has("cursor-agent")) {
+        return { agent: "Cursor Agent", name: "Cursor Agent" };
+    }
+    if (p.has("aider.exe") || p.has("aider")) {
+        return { agent: "Aider", name: "Aider AI" };
+    }
+    if (p.has("gemini.exe") || p.has("gemini")) {
+        return { agent: "Gemini CLI", name: "Gemini CLI" };
+    }
+    if (p.has("opencode.exe") || p.has("opencode")) {
+        return { agent: "OpenCode", name: "OpenCode" };
+    }
+    if (p.has("codex.exe") || p.has("codex")) {
+        return { agent: "Codex CLI", name: "Codex CLI" };
+    }
+    if (p.has("copilot.exe") || p.has("github-copilot-cli.exe")) {
+        return { agent: "Copilot", name: "GitHub Copilot" };
+    }
+    if (p.has("goose.exe") || p.has("goose")) {
+        return { agent: "Goose AI", name: "Goose AI" };
+    }
+    if (p.has("ollama.exe") || p.has("ollama")) {
+        return { agent: "Ollama", name: "Ollama LLM" };
+    }
+    return null;
+}
+
+// ==========================================
+// 💻 TERMINAL TEXT EDITORS (Neovim, Helix, Vim, etc.)
+// ==========================================
+function getActiveTerminalEditor() {
+    const p = cachedProcessNames;
+    if (p.has("nvim.exe") || p.has("nvim")) return "Neovim";
+    if (p.has("vim.exe") || p.has("vim")) return "Vim";
+    if (p.has("helix.exe") || p.has("helix") || p.has("hlx.exe") || p.has("hlx")) return "Helix";
+    if (p.has("micro.exe") || p.has("micro")) return "Micro";
+    if (p.has("nano.exe") || p.has("nano")) return "Nano";
+    if (p.has("emacs.exe") || p.has("emacs")) return "Emacs";
+    return null;
+}
+
+// ==========================================
+// ⚙️ DEV CLI TOOLS & COMPILERS (Cargo, Bun, Docker, etc.)
+// ==========================================
+function getActiveDevCli() {
+    if (config.enableCliDetection === false) return null;
+    const p = cachedProcessNames;
+    if (p.has("cargo.exe") || p.has("cargo") || p.has("rustc.exe")) return { name: "Cargo", lang: "Rust" };
+    if (p.has("bun.exe") || p.has("bun")) return { name: "Bun", lang: "JavaScript" };
+    if (p.has("deno.exe") || p.has("deno")) return { name: "Deno", lang: "TypeScript" };
+    if (p.has("docker.exe") || p.has("docker")) return { name: "Docker", lang: "DevOps" };
+    if (p.has("kubectl.exe") || p.has("kubectl")) return { name: "Kubernetes", lang: "DevOps" };
+    if (p.has("git.exe")) return { name: "Git", lang: "Version Control" };
+    if (p.has("go.exe") || p.has("go")) return { name: "Go CLI", lang: "Go" };
+    if (p.has("python.exe") || p.has("python3.exe") || p.has("py.exe")) return { name: "Python", lang: "Python" };
+    return null;
+}
+
+// ==========================================
+// 💻 TERMINAL SHELLS
+// ==========================================
+function getActiveShell() {
+    if (config.enableCliDetection === false) return null;
+    const p = cachedProcessNames;
+    if (p.has("windowsterminal.exe")) return "Windows Terminal";
+    if (p.has("pwsh.exe")) return "PowerShell 7";
+    if (p.has("powershell.exe")) return "PowerShell";
+    if (p.has("cmd.exe")) return "Command Prompt";
+    if (p.has("wsl.exe") || p.has("bash.exe")) return "Bash / WSL";
+    if (p.has("nu.exe")) return "Nushell";
+    if (p.has("fish.exe")) return "Fish Shell";
     return null;
 }
 
@@ -625,27 +1034,6 @@ function getIpcPath(index = 0) {
                    (process.getuid ? `/run/user/${process.getuid()}` : null) || 
                    "/tmp";
     return path.join(prefix, `discord-ipc-${index}`);
-}
-
-function getActiveTerminalEditor() {
-    try {
-        if (process.platform === "win32") {
-            const out = execSync("tasklist /NH /FO CSV", { encoding: "utf8", timeout: 800 });
-            if (/nvim\.exe/i.test(out)) return "Neovim";
-            if (/vim\.exe/i.test(out)) return "Vim";
-            if (/helix\.exe/i.test(out)) return "Helix";
-            if (/micro\.exe/i.test(out)) return "Micro";
-            if (/nano\.exe/i.test(out)) return "Nano";
-        } else {
-            const out = execSync("ps -A -o comm=", { encoding: "utf8", timeout: 800 });
-            if (/\bnvim\b/i.test(out)) return "Neovim";
-            if (/\bvim\b/i.test(out)) return "Vim";
-            if (/\bhlx\b|\bhelix\b/i.test(out)) return "Helix";
-            if (/\bmicro\b/i.test(out)) return "Micro";
-            if (/\bnano\b/i.test(out)) return "Nano";
-        }
-    } catch {}
-    return null;
 }
 
 let socket = null;
@@ -706,11 +1094,29 @@ function connect(pipeIndex = 0) {
 function updatePresence() {
     if (!socket || socket.destroyed) return;
 
+    // Refresh background process cache
+    refreshProcessListAsync();
+
     config = loadConfig();
     const t = TEMPLATES[config.theme] || TEMPLATES.thai;
     const userTag = config.username;
-    const rawFolderName = path.basename(targetDir) || "Workspace";
-    const isUserHome = Boolean(userHome && path.resolve(targetDir).toLowerCase() === path.resolve(userHome).toLowerCase());
+
+    // Active Activity Detectors
+    const freebuff = getFreebuffActivity(targetDir);
+    const agyAgent = getAntigravityActivity();
+    const otherAgent = getOtherAiAgentActivity();
+    const activeEditor = getActiveTerminalEditor();
+    const devCli = getActiveDevCli();
+    const activeShell = getActiveShell();
+
+    // Dynamically sync effective directory with active Freebuff project
+    let effectiveDir = targetDir;
+    if (freebuff && freebuff.projectCwd && fs.existsSync(freebuff.projectCwd)) {
+        effectiveDir = freebuff.projectCwd;
+    }
+
+    const rawFolderName = path.basename(effectiveDir) || "Workspace";
+    const isUserHome = Boolean(userHome && path.resolve(effectiveDir).toLowerCase() === path.resolve(userHome).toLowerCase());
     const isSameName = Boolean(rawFolderName.toLowerCase() === (userTag || "").toLowerCase());
 
     let cleanFolder = rawFolderName;
@@ -719,16 +1125,19 @@ function updatePresence() {
     }
     const folderName = cleanFolder;
 
-    const branch = getGitInfo(targetDir);
-    const rbxInfo = getRobloxStudioInfo(targetDir);
-    const projLang = detectProjectLanguage(targetDir);
-    const agent = getAgentActivity();
-    const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
-    const diffStats = config.showGitStats ? getGitDiffStats(targetDir) : null;
-    const activeEditor = getActiveTerminalEditor();
+    const branch = getGitInfo(effectiveDir);
+    const rbxInfo = getRobloxStudioInfo(effectiveDir);
+    const projLang = detectProjectLanguage(effectiveDir);
+    const wsMod = getRecentlyModifiedWorkspaceFile(effectiveDir);
+    const diffStats = config.showGitStats ? getGitDiffStats(effectiveDir) : null;
 
     // Track active changes for AFK calculation
-    const currentActivityKey = (agent ? `${agent.action}:${agent.target}` : "") + (wsMod?.file || "") + (activeEditor || "");
+    const currentActivityKey = (freebuff ? `fb:${freebuff.projectName}:${freebuff.prompt}` : "") +
+                               (agyAgent ? `agy:${agyAgent.action}:${agyAgent.target}` : "") +
+                               (wsMod?.file || "") +
+                               (activeEditor || "") +
+                               (devCli?.name || "");
+
     if (currentActivityKey && currentActivityKey !== lastTrackedTarget) {
         lastActivityTime = Date.now();
         lastTrackedTarget = currentActivityKey;
@@ -738,7 +1147,7 @@ function updatePresence() {
     const isAfk = Date.now() - lastActivityTime > afkLimitMs;
 
     let details = "";
-    let largeImage = projLang.icon;
+    let largeImage = projLang.icon || "vscode";
     let largeText = `${projLang.name} • ${userTag}`;
     let smallImage = "vscode";
     let smallText = `👤 ${userTag} • Zircord`;
@@ -751,7 +1160,7 @@ function updatePresence() {
     }
 
     const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
-    const displayFolder = rbxInfo ? rbxInfo.placeTitle : folderName;
+    const displayFolder = rbxInfo ? rbxInfo.placeTitle : (freebuff ? freebuff.projectName : folderName);
     let state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo));
 
     if (isAfk) {
@@ -759,41 +1168,68 @@ function updatePresence() {
         state = t.afkState(userTag);
         largeImage = "idle";
         largeText = `AFK (${config.afkTimeoutMinutes}m) • ${userTag}`;
-    } else if (agent) {
-        const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
+    } else if (freebuff) {
+        details = t.freebuff(freebuff.projectName, freebuff.prompt, freebuff.action);
+        largeImage = projLang.icon || "vscode";
+        largeText = `Freebuff AI Agent • ${userTag}`;
+        smallImage = "vscode";
+        smallText = `🤖 Freebuff AI • Zircord`;
+    } else if (agyAgent) {
+        const lang = agyAgent.ext && LANG_MAP[agyAgent.ext] ? LANG_MAP[agyAgent.ext] : projLang;
         if (!rbxInfo) {
-            largeImage = lang.icon;
+            largeImage = lang.icon || "vscode";
             largeText = `${lang.name} • ${userTag}`;
         }
 
-        let subType = agent.ext === "luau" || agent.ext === "lua" ? getLuauScriptSubtype(agent.target) : "";
+        let subType = agyAgent.ext === "luau" || agyAgent.ext === "lua" ? getLuauScriptSubtype(agyAgent.target) : "";
         if (activeEditor) subType = subType ? `${subType} • ${activeEditor}` : activeEditor;
 
-        if (agent.action === "Writing") {
-            details = t.writing(lang.name, agent.target, subType);
-        } else if (agent.action === "Inspecting") {
-            details = t.reading(lang.name, agent.target, subType);
-        } else if (agent.action === "Executing") {
-            details = t.running(agent.target);
-        } else if (agent.action === "Researching") {
-            details = t.searching(agent.target);
+        if (agyAgent.action === "Writing") {
+            details = t.writing(lang.name, agyAgent.target, subType);
+        } else if (agyAgent.action === "Inspecting") {
+            details = t.reading(lang.name, agyAgent.target, subType);
+        } else if (agyAgent.action === "Executing") {
+            details = t.running(agyAgent.target);
+        } else if (agyAgent.action === "Researching") {
+            details = t.searching(agyAgent.target);
         } else {
-            details = t.planning(agent.target);
+            details = t.planning(agyAgent.target);
         }
+    } else if (otherAgent) {
+        details = t.aiAgent(otherAgent.name, folderName, "");
+        largeImage = projLang.icon || "vscode";
+        largeText = `${otherAgent.name} • ${userTag}`;
+        smallImage = "vscode";
+        smallText = `🤖 ${otherAgent.name} • Zircord`;
+    } else if (activeEditor && wsMod && wsMod.file) {
+        const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
+        details = t.cliEditor(activeEditor, wsMod.file, folderName);
+        largeImage = lang.icon || "vscode";
+        largeText = `${lang.name} • ${activeEditor}`;
     } else if (wsMod && wsMod.file) {
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
         if (!rbxInfo) {
-            largeImage = lang.icon;
+            largeImage = lang.icon || "vscode";
             largeText = `${lang.name} • ${userTag}`;
         }
         let subType = wsMod.ext === "luau" || wsMod.ext === "lua" ? getLuauScriptSubtype(wsMod.file) : "";
         if (activeEditor) subType = subType ? `${subType} • ${activeEditor}` : activeEditor;
         details = t.writing(lang.name, wsMod.file, subType);
+    } else if (activeEditor) {
+        details = t.cliEditor(activeEditor, "", folderName);
+        largeImage = projLang.icon || "vscode";
+        largeText = `${activeEditor} • ${userTag}`;
+    } else if (devCli) {
+        details = t.cliTool(devCli.name, folderName, devCli.lang);
+        largeImage = projLang.icon || "vscode";
+        largeText = `${devCli.name} • ${userTag}`;
+    } else if (activeShell) {
+        details = t.cliShell(activeShell, folderName);
+        largeImage = "shell";
+        largeText = `${activeShell} • ${userTag}`;
     } else {
         if (rbxInfo) {
             details = t.idleRoblox(rbxInfo.placeTitle);
-        } else if (activeEditor) {
-            details = `🔥 ${activeEditor} :: ${folderName}`;
         } else if (projLang.name !== "Multi-Language") {
             details = t.idleLang(projLang.name);
         } else {
@@ -818,7 +1254,7 @@ function updatePresence() {
 
         // 2. Ensure exactly 2 buttons in 100% Thai
         if (buttons.length < 2) {
-            const remoteUrl = getGitRemoteUrl(targetDir);
+            const remoteUrl = getGitRemoteUrl(effectiveDir);
             const fallbackProfileUrl = config.profileUrl || "https://github.com/ZXD44";
             const zircordRepoUrl = "https://github.com/ZXD44/Zircord";
 

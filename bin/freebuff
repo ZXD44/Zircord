@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+
+if [ -f "$HOME/.config/manicode/freebuff" ]; then
+    exec "$HOME/.config/manicode/freebuff" "$@"
+elif [ -f "$HOME/.config/manicode/freebuff.exe" ]; then
+    exec "$HOME/.config/manicode/freebuff.exe" "$@"
+elif [ -f "$APPDATA/npm/node_modules/freebuff/index.js" ]; then
+    exec node "$APPDATA/npm/node_modules/freebuff/index.js" "$@"
+else
+    exec freebuff "$@"
+fi
