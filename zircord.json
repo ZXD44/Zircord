@@ -1,5 +1,5 @@
 {
-  "$schema": "./zircord.schema.json",
+  "$schema": "./config/zircord.schema.json",
   "theme": "thai",
   "username": "ZirconX",
   "afkTimeoutMinutes": 5,
