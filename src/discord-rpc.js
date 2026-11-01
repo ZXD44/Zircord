@@ -3,25 +3,15 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const logFile = path.join(__dirname, "rpc.log");
-function log(...msg) {
-    try {
-        fs.appendFileSync(logFile, new Date().toISOString() + " " + msg.join(" ") + "\n");
-    } catch {}
-}
-
-process.on("uncaughtException", (err) => log("Uncaught:", err.stack));
-process.on("unhandledRejection", (err) => log("Unhandled:", err));
-
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
 const targetDir = process.argv[2] || process.cwd();
 const startTimestamp = Math.floor(Date.now() / 1000);
 
 const LANG_MAP = {
     js: { icon: "js", name: "JavaScript" },
-    jsx: { icon: "jsx", name: "React (JSX)" },
+    jsx: { icon: "jsx", name: "React JSX" },
     ts: { icon: "ts", name: "TypeScript" },
-    tsx: { icon: "tsx", name: "React (TSX)" },
+    tsx: { icon: "tsx", name: "React TSX" },
     py: { icon: "python", name: "Python" },
     lua: { icon: "lua", name: "Luau" },
     rs: { icon: "rust", name: "Rust" },
@@ -31,13 +21,13 @@ const LANG_MAP = {
     cs: { icon: "csharp", name: "C#" },
     json: { icon: "json", name: "JSON" },
     md: { icon: "markdown", name: "Markdown" },
-    html: { icon: "html", name: "HTML" },
-    css: { icon: "css", name: "CSS" },
+    html: { icon: "html", name: "HTML5" },
+    css: { icon: "css", name: "CSS3" },
     rb: { icon: "ruby", name: "Ruby" },
     php: { icon: "php", name: "PHP" },
     sh: { icon: "shell", name: "Shell Script" },
     ps1: { icon: "powershell", name: "PowerShell" },
-    sql: { icon: "sql", name: "SQL" },
+    sql: { icon: "sql", name: "SQL Database" },
     docker: { icon: "docker", name: "Docker" },
     dockerfile: { icon: "docker", name: "Docker" },
     yaml: { icon: "yaml", name: "YAML" },
@@ -57,9 +47,23 @@ function detectProjectLanguage(dir) {
         if (fs.existsSync(path.join(dir, "package.json"))) return LANG_MAP.js;
         if (fs.existsSync(path.join(dir, "requirements.txt")) || fs.existsSync(path.join(dir, "pyproject.toml"))) return LANG_MAP.py;
         if (fs.existsSync(path.join(dir, "go.mod"))) return LANG_MAP.go;
-        if (fs.existsSync(path.join(dir, "default.project.json"))) return LANG_MAP.lua;
+        if (fs.existsSync(path.join(dir, "default.project.json")) || fs.existsSync(path.join(dir, "wally.toml"))) return LANG_MAP.lua;
+
+        // Scan files in top-level folder for dominant language
+        const files = fs.readdirSync(dir, { withFileTypes: true });
+        const counts = {};
+        for (const f of files) {
+            if (f.isFile()) {
+                const ext = path.extname(f.name).slice(1).toLowerCase();
+                if (LANG_MAP[ext]) {
+                    counts[ext] = (counts[ext] || 0) + 1;
+                }
+            }
+        }
+        const dominant = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        if (dominant && LANG_MAP[dominant]) return LANG_MAP[dominant];
     } catch {}
-    return { icon: "vscode", name: "Code" };
+    return { icon: "vscode", name: "Multi-Language" };
 }
 
 function getGitInfo(dir) {
@@ -113,17 +117,17 @@ function getAgentActivity() {
                 return { action: "Writing", target, ext };
             } else if (tool.name === "run_command") {
                 const summary = cleanStr(tool.args?.toolSummary) || "Terminal Task";
-                return { action: "Running", target: summary };
+                return { action: "Executing", target: summary };
             } else if (tool.name === "search_web") {
                 const query = cleanStr(tool.args?.query).slice(0, 30);
-                return { action: "Searching", target: query };
+                return { action: "Researching", target: query };
             } else if (tool.name === "read_file") {
                 const target = cleanStr(path.basename(cleanStr(tool.args?.Path) || ""));
                 const ext = path.extname(target).slice(1).toLowerCase();
-                return { action: "Reading", target, ext };
+                return { action: "Inspecting", target, ext };
             }
         } else if (item.type === "USER_INPUT") {
-            return { action: "Planning", target: "Architecture & Code" };
+            return { action: "Architecting", target: "Planning Next Steps" };
         }
     } catch {}
     return null;
@@ -228,43 +232,51 @@ function updatePresence() {
     let details = "";
     let state = "";
     let largeImage = projLang.icon;
-    let largeText = projLang.name;
+    let largeText = `${projLang.name} • AgyCord`;
     let smallImage = "vscode";
-    let smallText = "Visual Studio Code";
+    let smallText = "Antigravity CLI";
+
+    const gitBranchText = branch ? `🌿 ${branch}` : "";
+    const dirtyCountText = wsMod?.totalDirty ? `⚡ ${wsMod.totalDirty} modified` : "";
+    const gitContext = [gitBranchText, dirtyCountText].filter(Boolean).join(" • ");
 
     if (agent) {
-        // CLI Agent กำลังดำเนินการ
+        // AI Agent is currently taking action
         const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
         largeImage = lang.icon;
-        largeText = lang.name;
+        largeText = `${lang.name} • Antigravity AI`;
 
         if (agent.action === "Writing") {
-            details = `Writing ${lang.name} (${agent.target})`;
-            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
-        } else if (agent.action === "Reading") {
-            details = `Reading ${lang.name} (${agent.target})`;
-            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
-        } else if (agent.action === "Running") {
-            details = `Running: ${agent.target}`;
-            state = `Developing ${lang.name} • ${folderName}`;
-        } else if (agent.action === "Searching") {
-            details = `Researching: ${agent.target}`;
-            state = `Planning in ${folderName}`;
+            details = `⚡ Writing ${lang.name}: ${agent.target}`;
+            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+        } else if (agent.action === "Inspecting") {
+            details = `📖 Reading: ${agent.target} (${lang.name})`;
+            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+        } else if (agent.action === "Executing") {
+            details = `⚙️ Executing: ${agent.target}`;
+            state = `Developing in ${folderName}${branch ? ` • 🌿 ${branch}` : ""}`;
+        } else if (agent.action === "Researching") {
+            details = `🔍 Researching: ${agent.target}`;
+            state = `Architecting in ${folderName}`;
         } else {
-            details = `${agent.action} • ${lang.name}`;
-            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+            details = `🧠 ${agent.action}: ${agent.target}`;
+            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
         }
     } else if (wsMod && wsMod.file) {
-        // ตรวจพบไฟล์เพิ่งถูกแก้ไขใน Workspace
+        // User recently saved/edited a file in workspace
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
         largeImage = lang.icon;
-        largeText = lang.name;
-        details = `Writing ${lang.name} (${wsMod.file})`;
-        state = `${folderName}${branch ? ` • ${branch}` : ""}${wsMod.totalDirty ? ` (${wsMod.totalDirty} modified)` : ""}`;
+        largeText = `${lang.name} • Workspace`;
+        details = `⚡ Writing ${lang.name}: ${wsMod.file}`;
+        state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
     } else {
-        // สถานะทั่วไปตอนเปิดทิ้งไว้
-        details = `Coding in ${projLang.name}`;
-        state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+        // Clean idle / active in workspace (No more silly "Coding in Code"!)
+        if (projLang.name !== "Multi-Language") {
+            details = `⚡ Developing ${projLang.name} Project`;
+        } else {
+            details = `💻 Crafting in ${folderName}`;
+        }
+        state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
     }
 
     const activity = {
