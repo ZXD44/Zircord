@@ -24,7 +24,7 @@ const TEMPLATES = {
         idleLang: (lang) => `⚡ ลุยโปรเจกต์ ${lang}`,
         idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
         state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
-        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `⚡ แก้ไข ${dirty} ไฟล์` : ""].filter(Boolean).join(" • ")
+        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `✏️ แก้ไป ${dirty} ไฟล์` : ""].filter(Boolean).join(" • ")
     },
     modern: {
         writing: (lang, file) => `⚡ Writing ${lang}: ${file}`,
