@@ -1,0 +1,300 @@
+const net = require("net");
+const path = require("path");
+const fs = require("fs");
+const { execSync } = require("child_process");
+
+const logFile = path.join(__dirname, "rpc.log");
+function log(...msg) {
+    try {
+        fs.appendFileSync(logFile, new Date().toISOString() + " " + msg.join(" ") + "\n");
+    } catch {}
+}
+
+process.on("uncaughtException", (err) => log("Uncaught:", err.stack));
+process.on("unhandledRejection", (err) => log("Unhandled:", err));
+
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
+const targetDir = process.argv[2] || process.cwd();
+const startTimestamp = Math.floor(Date.now() / 1000);
+
+const LANG_MAP = {
+    js: { icon: "js", name: "JavaScript" },
+    jsx: { icon: "jsx", name: "React (JSX)" },
+    ts: { icon: "ts", name: "TypeScript" },
+    tsx: { icon: "tsx", name: "React (TSX)" },
+    py: { icon: "python", name: "Python" },
+    lua: { icon: "lua", name: "Luau" },
+    rs: { icon: "rust", name: "Rust" },
+    go: { icon: "go", name: "Go" },
+    c: { icon: "c", name: "C" },
+    cpp: { icon: "cpp", name: "C++" },
+    cs: { icon: "csharp", name: "C#" },
+    json: { icon: "json", name: "JSON" },
+    md: { icon: "markdown", name: "Markdown" },
+    html: { icon: "html", name: "HTML" },
+    css: { icon: "css", name: "CSS" },
+    rb: { icon: "ruby", name: "Ruby" },
+    php: { icon: "php", name: "PHP" },
+    sh: { icon: "shell", name: "Shell Script" },
+    ps1: { icon: "powershell", name: "PowerShell" },
+    sql: { icon: "sql", name: "SQL" },
+    docker: { icon: "docker", name: "Docker" },
+    dockerfile: { icon: "docker", name: "Docker" },
+    yaml: { icon: "yaml", name: "YAML" },
+    yml: { icon: "yaml", name: "YAML" },
+    toml: { icon: "toml", name: "TOML" }
+};
+
+function cleanStr(s) {
+    if (!s) return "";
+    return s.toString().replace(/^["']|["']$/g, "").trim();
+}
+
+function detectProjectLanguage(dir) {
+    try {
+        if (fs.existsSync(path.join(dir, "Cargo.toml"))) return LANG_MAP.rs;
+        if (fs.existsSync(path.join(dir, "tsconfig.json"))) return LANG_MAP.ts;
+        if (fs.existsSync(path.join(dir, "package.json"))) return LANG_MAP.js;
+        if (fs.existsSync(path.join(dir, "requirements.txt")) || fs.existsSync(path.join(dir, "pyproject.toml"))) return LANG_MAP.py;
+        if (fs.existsSync(path.join(dir, "go.mod"))) return LANG_MAP.go;
+        if (fs.existsSync(path.join(dir, "default.project.json"))) return LANG_MAP.lua;
+    } catch {}
+    return { icon: "vscode", name: "Code" };
+}
+
+function getGitInfo(dir) {
+    try {
+        const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+            cwd: dir,
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 1000
+        }).toString().trim();
+        return branch || null;
+    } catch {
+        return null;
+    }
+}
+
+function getAgentActivity() {
+    const brainDir = path.join(process.env.USERPROFILE || "", ".gemini", "antigravity-cli", "brain");
+    if (!fs.existsSync(brainDir)) return null;
+
+    try {
+        const entries = fs.readdirSync(brainDir, { withFileTypes: true })
+            .filter(d => d.isDirectory() && d.name !== "scratch")
+            .map(d => {
+                const p = path.join(brainDir, d.name);
+                return { path: p, time: fs.statSync(p).mtimeMs };
+            })
+            .sort((a, b) => b.time - a.time);
+
+        if (entries.length === 0) return null;
+        const transcriptPath = path.join(entries[0].path, ".system_generated", "logs", "transcript.jsonl");
+        if (!fs.existsSync(transcriptPath)) return null;
+
+        const stat = fs.statSync(transcriptPath);
+        if (stat.size === 0 || Date.now() - stat.mtimeMs > 180000) return null;
+
+        const readSize = Math.min(stat.size, 4096);
+        const buf = Buffer.alloc(readSize);
+        const fd = fs.openSync(transcriptPath, "r");
+        fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+        fs.closeSync(fd);
+
+        const lines = buf.toString("utf8").trim().split("\n");
+        const lastLine = lines[lines.length - 1];
+        const item = JSON.parse(lastLine);
+
+        if (item.type === "PLANNER_RESPONSE" && item.tool_calls && item.tool_calls.length > 0) {
+            const tool = item.tool_calls[0];
+            if (tool.name === "edit_file" || tool.name === "write_file") {
+                const target = cleanStr(path.basename(cleanStr(tool.args?.Path) || "code"));
+                const ext = path.extname(target).slice(1).toLowerCase();
+                return { action: "Writing", target, ext };
+            } else if (tool.name === "run_command") {
+                const summary = cleanStr(tool.args?.toolSummary) || "Terminal Task";
+                return { action: "Running", target: summary };
+            } else if (tool.name === "search_web") {
+                const query = cleanStr(tool.args?.query).slice(0, 30);
+                return { action: "Searching", target: query };
+            } else if (tool.name === "read_file") {
+                const target = cleanStr(path.basename(cleanStr(tool.args?.Path) || ""));
+                const ext = path.extname(target).slice(1).toLowerCase();
+                return { action: "Reading", target, ext };
+            }
+        } else if (item.type === "USER_INPUT") {
+            return { action: "Planning", target: "Architecture & Code" };
+        }
+    } catch {}
+    return null;
+}
+
+function getRecentlyModifiedWorkspaceFile(dir) {
+    try {
+        const out = execSync("git status --porcelain -u", {
+            cwd: dir,
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 1000
+        }).toString().trim();
+        if (!out) return null;
+
+        const files = out.split("\n").map(l => l.trim().slice(3).replace(/"/g, "")).filter(Boolean);
+        let newest = null;
+        let newestTime = 0;
+        const now = Date.now();
+
+        for (const f of files) {
+            const fullPath = path.isAbsolute(f) ? f : path.join(dir, f);
+            if (fs.existsSync(fullPath)) {
+                const mtime = fs.statSync(fullPath).mtimeMs;
+                if (mtime > newestTime) {
+                    newestTime = mtime;
+                    newest = f;
+                }
+            }
+        }
+
+        if (newest && (now - newestTime < 180000)) {
+            const base = path.basename(newest);
+            return { file: base, ext: path.extname(base).slice(1).toLowerCase(), totalDirty: files.length };
+        }
+        return { totalDirty: files.length };
+    } catch {
+        return null;
+    }
+}
+
+let socket = null;
+let updateInterval = null;
+
+function connect(pipeIndex = 0) {
+    if (pipeIndex > 9) {
+        setTimeout(() => connect(0), 10000);
+        return;
+    }
+
+    const pipePath = `\\\\.\\pipe\\discord-ipc-${pipeIndex}`;
+    const s = net.connect(pipePath, () => {
+        socket = s;
+        const payload = Buffer.from(JSON.stringify({ v: 1, client_id: CLIENT_ID }));
+        const header = Buffer.alloc(8);
+        header.writeInt32LE(0, 0); // HANDSHAKE
+        header.writeInt32LE(payload.length, 4);
+        socket.write(Buffer.concat([header, payload]));
+    });
+
+    s.on("data", (data) => {
+        try {
+            const op = data.readInt32LE(0);
+            const len = data.readInt32LE(4);
+            const body = JSON.parse(data.subarray(8, 8 + len).toString());
+
+            if (body.cmd === "DISPATCH" && body.evt === "READY") {
+                updatePresence();
+                if (!updateInterval) {
+                    updateInterval = setInterval(updatePresence, 5000);
+                }
+            }
+        } catch {}
+    });
+
+    s.on("error", () => {
+        s.destroy();
+        if (socket === s) socket = null;
+        connect(pipeIndex + 1);
+    });
+
+    s.on("close", () => {
+        if (socket === s) {
+            socket = null;
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            setTimeout(() => connect(0), 10000);
+        }
+    });
+}
+
+function updatePresence() {
+    if (!socket || socket.destroyed) return;
+
+    const folderName = path.basename(targetDir) || "Workspace";
+    const branch = getGitInfo(targetDir);
+    const projLang = detectProjectLanguage(targetDir);
+    const agent = getAgentActivity();
+    const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
+
+    let details = "";
+    let state = "";
+    let largeImage = projLang.icon;
+    let largeText = projLang.name;
+    let smallImage = "vscode";
+    let smallText = "Visual Studio Code";
+
+    if (agent) {
+        // CLI Agent กำลังดำเนินการ
+        const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
+        largeImage = lang.icon;
+        largeText = lang.name;
+
+        if (agent.action === "Writing") {
+            details = `Writing ${lang.name} (${agent.target})`;
+            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+        } else if (agent.action === "Reading") {
+            details = `Reading ${lang.name} (${agent.target})`;
+            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+        } else if (agent.action === "Running") {
+            details = `Running: ${agent.target}`;
+            state = `Developing ${lang.name} • ${folderName}`;
+        } else if (agent.action === "Searching") {
+            details = `Researching: ${agent.target}`;
+            state = `Planning in ${folderName}`;
+        } else {
+            details = `${agent.action} • ${lang.name}`;
+            state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+        }
+    } else if (wsMod && wsMod.file) {
+        // ตรวจพบไฟล์เพิ่งถูกแก้ไขใน Workspace
+        const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
+        largeImage = lang.icon;
+        largeText = lang.name;
+        details = `Writing ${lang.name} (${wsMod.file})`;
+        state = `${folderName}${branch ? ` • ${branch}` : ""}${wsMod.totalDirty ? ` (${wsMod.totalDirty} modified)` : ""}`;
+    } else {
+        // สถานะทั่วไปตอนเปิดทิ้งไว้
+        details = `Coding in ${projLang.name}`;
+        state = `${folderName}${branch ? ` • ${branch}` : ""}`;
+    }
+
+    const activity = {
+        details,
+        state,
+        timestamps: {
+            start: startTimestamp
+        },
+        assets: {
+            large_image: largeImage,
+            large_text: largeText,
+            small_image: smallImage,
+            small_text: smallText
+        },
+        instance: false
+    };
+
+    const payload = Buffer.from(JSON.stringify({
+        cmd: "SET_ACTIVITY",
+        args: {
+            pid: process.pid,
+            activity: activity
+        },
+        nonce: Math.random().toString(36).substring(2)
+    }));
+
+    const header = Buffer.alloc(8);
+    header.writeInt32LE(1, 0); // Opcode 1: FRAME
+    header.writeInt32LE(payload.length, 4);
+    socket.write(Buffer.concat([header, payload]));
+}
+
+connect(0);
