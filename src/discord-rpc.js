@@ -4,6 +4,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
+const USER_TAG = process.env.AGY_USER || process.env.USERNAME || "ZirconX";
 const targetDir = process.argv[2] || process.cwd();
 const startTimestamp = Math.floor(Date.now() / 1000);
 
@@ -49,7 +50,6 @@ function detectProjectLanguage(dir) {
         if (fs.existsSync(path.join(dir, "go.mod"))) return LANG_MAP.go;
         if (fs.existsSync(path.join(dir, "default.project.json")) || fs.existsSync(path.join(dir, "wally.toml"))) return LANG_MAP.lua;
 
-        // Scan files in top-level folder for dominant language
         const files = fs.readdirSync(dir, { withFileTypes: true });
         const counts = {};
         for (const f of files) {
@@ -234,49 +234,50 @@ function updatePresence() {
     let largeImage = projLang.icon;
     let largeText = `${projLang.name} • AgyCord`;
     let smallImage = "vscode";
-    let smallText = "Antigravity CLI";
+    let smallText = `👤 ${USER_TAG}`;
 
     const gitBranchText = branch ? `🌿 ${branch}` : "";
     const dirtyCountText = wsMod?.totalDirty ? `⚡ ${wsMod.totalDirty} modified` : "";
     const gitContext = [gitBranchText, dirtyCountText].filter(Boolean).join(" • ");
 
+    // Identity badge: 👤 ZirconX @ agycord (🌿 main)
+    const contextBadge = gitContext ? ` (${gitContext})` : "";
+    const userBadge = `👤 ${USER_TAG} @ ${folderName}${contextBadge}`;
+
     if (agent) {
-        // AI Agent is currently taking action
         const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
         largeImage = lang.icon;
-        largeText = `${lang.name} • Antigravity AI`;
+        largeText = `${lang.name} • ${USER_TAG}`;
 
         if (agent.action === "Writing") {
             details = `⚡ Writing ${lang.name}: ${agent.target}`;
-            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+            state = userBadge;
         } else if (agent.action === "Inspecting") {
             details = `📖 Reading: ${agent.target} (${lang.name})`;
-            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+            state = userBadge;
         } else if (agent.action === "Executing") {
             details = `⚙️ Executing: ${agent.target}`;
-            state = `Developing in ${folderName}${branch ? ` • 🌿 ${branch}` : ""}`;
+            state = userBadge;
         } else if (agent.action === "Researching") {
             details = `🔍 Researching: ${agent.target}`;
-            state = `Architecting in ${folderName}`;
+            state = userBadge;
         } else {
             details = `🧠 ${agent.action}: ${agent.target}`;
-            state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+            state = userBadge;
         }
     } else if (wsMod && wsMod.file) {
-        // User recently saved/edited a file in workspace
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
         largeImage = lang.icon;
-        largeText = `${lang.name} • Workspace`;
+        largeText = `${lang.name} • ${USER_TAG}`;
         details = `⚡ Writing ${lang.name}: ${wsMod.file}`;
-        state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+        state = userBadge;
     } else {
-        // Clean idle / active in workspace (No more silly "Coding in Code"!)
         if (projLang.name !== "Multi-Language") {
             details = `⚡ Developing ${projLang.name} Project`;
         } else {
             details = `💻 Crafting in ${folderName}`;
         }
-        state = `📂 ${folderName}${gitContext ? ` (${gitContext})` : ""}`;
+        state = userBadge;
     }
 
     const activity = {
