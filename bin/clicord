@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-exec node "$USERPROFILE/.gemini/scripts/discord-rpc.js" "$PWD"
+node "$HOME/.gemini/scripts/discord-rpc.js" "$@"

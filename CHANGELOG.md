@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-11-01
+
+### Added
+- **CLI Daemon Management**: Added `clicord start`, `clicord stop`, `clicord status`, and `clicord --help` commands with PID tracking.
+- **Cross-Platform IPC Engine**: Seamless support for Linux and macOS Unix domain sockets (`/tmp/discord-ipc-0` / `$XDG_RUNTIME_DIR`) alongside Windows named pipes.
+- **Terminal Editor Auto-Detection**: Real-time process scanning for active terminal editors (`Neovim`, `Vim`, `Helix`, `Micro`, `Nano`).
+- Restored username `👤 ZirconX` alongside dedicated Git metrics on Line 2.
+
+---
+
 ## [1.2.0] - 2026-11-01
 
 ### Added
