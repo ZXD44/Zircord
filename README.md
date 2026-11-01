@@ -1,24 +1,30 @@
-# AGY Discord Rich Presence (RPC) 🚀
+<div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)]()
-[![Runtime](https://img.shields.io/badge/Node.js-18%2B-green.svg)]()
-[![Rust](https://img.shields.io/badge/Built%20With-Rust-orange.svg)]()
+# 🌌 AgyCord
 
-> Intelligent, real-time **Discord Rich Presence** for **Google Antigravity CLI (`agy`)**.
-> Works seamlessly across **Windows Terminal (`wt`)**, **Command Prompt (`cmd`)**, **PowerShell**, and **Git Bash**.
+**Intelligent, real-time Discord Rich Presence for Google Antigravity CLI (`agy`)**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg?style=flat-square)]()
+[![Runtime](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square)]()
+[![Built with Rust](https://img.shields.io/badge/Built%20With-Rust-orange.svg?style=flat-square)]()
+[![Shell Support](https://img.shields.io/badge/Shell-wt%20%7C%20cmd%20%7C%20pwsh%20%7C%20bash-purple.svg?style=flat-square)]()
+
+*Inspired by [LeonardSSH/vscord](https://github.com/LeonardSSH/vscord) — brought directly to the CLI terminal.*
+
+</div>
 
 ---
 
-## ✨ Features (จุดเด่น)
+## ⚡ Highlights (จุดเด่น)
 
-* 🧠 **Smart Context Detection**: ตรวจจับภาษาโค้ดและไฟล์ที่กำลังเขียนหรือแก้ไขแบบเรียลไทม์
-  * แสดง `Writing Python (main.py)`, `Writing TypeScript (index.ts)`, `Writing Luau (client.lua)` ฯลฯ
-  * เปลี่ยนไอคอนภาษาโปรแกรมบน Discord ตามไฟล์ที่กำลังเขียนจริงอัตโนมัติ
-* ⚡ **Zero-Lag Native Shim**: คอมไพล์ด้วย Rust รันในระดับมิลลิวินาที ไม่กระทบความเร็วของ CLI
-* 🪟 **Universal Shell Support**: รองรับทั้ง `cmd.exe`, `wt.exe`, PowerShell 5.1/7 และ Git Bash
-* 🔌 **Zero External NPM Dependencies**: เชื่อมต่อผ่าน Discord IPC Named Pipe (`\\.\pipe\discord-ipc-0..9`) ดั้งเดิมของ Windows โดยตรง
-* 🔄 **Auto Reconnect & Graceful Cleanup**: เชื่อมต่อใหม่อัตโนมัติหากเปิด Discord ทีหลัง และปิดโปรเซส RPC ทันทีเมื่อออกจาก `agy`
+* 🧠 **Live Smart Context**: ตรวจจับภาษาโค้ดและชื่อไฟล์ที่ Agent กำลังเขียนหรือแก้ไขจริงแบบเรียลไทม์
+  * แสดงผลเจาะจง: `Writing Python (main.py)`, `Writing TypeScript (index.ts)`, `Writing Luau (client.lua)`
+  * สลับไอคอนภาษาโปรแกรมบน Discord Profile ตามไฟล์ที่ทำงานอยู่จริงอัตโนมัติ
+* 🚀 **Zero-Lag Native Rust Shim**: สตาร์ทในระดับมิลลิวินาที ไม่กระทบประสิทธิภาพและคีย์ลัดของ CLI
+* 🪟 **Universal Terminal Compatibility**: ใช้งานได้ทันทีใน **Windows Terminal (`wt`)**, **Command Prompt (`cmd`)**, **PowerShell (5.1 & 7)**, และ **Git Bash**
+* 🔌 **Zero External NPM Packages**: เชื่อมต่อผ่าน Windows Named Pipe IPC (`\\.\pipe\discord-ipc-0..9`) ดั้งเดิม ไม่ต้องลง dependencies เพิ่ม
+* 🛡️ **Auto-Reconnect & Clean Exit**: เชื่อมต่อใหม่อัตโนมัติหากเปิด Discord ทีหลัง และปิดโปรเซส RPC ทันทีเมื่อปิด `agy`
 
 ---
 
@@ -27,17 +33,17 @@
 ```text
 Playing Visual Studio Code
 ├── Details: Writing Python (server.py)
-├── State:   AGY-CLI • main (3 modified)
+├── State:   agycord • main (2 modified)
 ├── Icon:    Python (Language: PYTHON)
 └── Small:   Visual Studio Code
 ```
 
 ---
 
-## 🛠️ Project Structure (โครงสร้างโปรเจกต์)
+## 📁 Repository Structure (โครงสร้างโปรเจกต์)
 
 ```text
-AGY-CLI/
+agycord/
 ├── bin/
 │   ├── agy.exe           # Precompiled native Rust shim
 │   ├── agy.cmd           # Windows Command Prompt wrapper
@@ -47,51 +53,64 @@ AGY-CLI/
 │   └── shim/             # Native Shim Source (Rust)
 │       ├── Cargo.toml
 │       └── src/main.rs
-├── install.ps1           # 1-Click Installer
+├── install.ps1           # 1-Click Automated Installer
 ├── uninstall.ps1         # 1-Click Uninstaller
-├── package.json          # Node project metadata
+├── package.json          # Node.js project metadata
 ├── README.md             # Documentation
 └── LICENSE               # MIT License
 ```
 
 ---
 
-## 🚀 Installation (วิธีติดตั้ง)
+## 📥 Installation (วิธีติดตั้ง)
 
-### วิธีที่ 1: ติดตั้งอัตโนมัติผ่าน PowerShell (Automated)
-เปิด PowerShell ในโฟลเดอร์นี้ แล้วรัน:
+### 1-Click Automated Install (แนะนำ)
+เปิด PowerShell ในโฟลเดอร์โปรเจกต์แล้วรัน:
 ```powershell
 .\install.ps1
 ```
-* สคริปต์จะทำการย้าย binary และ engine ไปยัง `~/.gemini/` และเพิ่มลงใน User PATH อัตโนมัติ
-* ปิดและเปิด Terminal ใหม่ จากนั้นพิมพ์ `agy` ใช้งานได้ทันที
+*ระบบจะติดตั้งไฟล์ที่จำเป็นและตั้งค่า Environment PATH ให้อัตโนมัติ*
 
-### วิธีที่ 2: ติดตั้งหรือทดสอบแบบ Manual
-1. รันสคริปต์ RPC ทดสอบโดยตรง:
-   ```bash
-   node src/discord-rpc.js
-   ```
-2. คอมไพล์ Native Shim ใหม่ (หากต้องการแก้ไขซอร์สโค้ด Rust):
-   ```bash
-   cd src/shim
-   cargo build --release
-   # ไฟล์ไบนารีจะอยู่ที่ target/release/agy-shim.exe
-   ```
+ปิดแล้วเปิดหน้าต่าง Terminal ใหม่ จากนั้นพิมพ์:
+```bash
+agy
+```
+
+---
+
+## 🛠️ Development & Building (สำหรับผู้พัฒนา)
+
+### ทดสอบการทำงานของ RPC Engine โดยตรง:
+```bash
+node src/discord-rpc.js
+```
+
+### คอมไพล์ Native Shim ใหม่ด้วย Rust:
+```bash
+rustc -O src/shim/src/main.rs -o bin/agy.exe
+```
+หรือใช้ Cargo:
+```bash
+cd src/shim
+cargo build --release
+```
 
 ---
 
 ## ⚙️ Configuration (การตั้งค่าเพิ่มเติม)
 
-### เปลี่ยน Application ID หรือไอคอนของตนเอง
-หากต้องการเปลี่ยนชื่อ App หรือไอคอนใน Discord Developer Portal:
-1. ไปที่ [Discord Developer Portal](https://discord.com/developers/applications) -> สร้าง App ใหม่
-2. กำหนด Environment Variable หรือแก้ไขใน `src/discord-rpc.js`:
-   ```javascript
-   const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "YOUR_APP_ID";
+### เปลี่ยน Discord Application ID
+ค่าเริ่มต้นจะใช้ Application ID ของ vscord (`782685898163617802`) หากต้องการใช้ App ID ของตนเอง:
+1. ไปที่ [Discord Developer Portal](https://discord.com/developers/applications) เพื่อสร้าง Application
+2. ตั้งค่าผ่าน Environment Variable:
+   ```bash
+   set DISCORD_CLIENT_ID=YOUR_APP_ID
    ```
+   หรือแก้ไขตัวแปร `CLIENT_ID` ในไฟล์ `src/discord-rpc.js`
 
 ---
 
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
-Created by [ZirconX](https://github.com/ZirconX).
+
+This project is licensed under the [MIT License](LICENSE).  
+Maintained by [ZirconX](https://github.com/ZirconX).
