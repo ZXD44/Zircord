@@ -86,6 +86,20 @@ Visual Studio Code
 
 ---
 
+## 🕹️ CLI Commands (คำสั่งจัดการ)
+
+สามารถสั่งการ Clicord ได้ง่ายๆ ผ่านเทอร์มินัลทุกตัว:
+
+```bash
+clicord              # รัน Clicord มอนิเตอร์โฟลเดอร์ปัจจุบัน (Foreground)
+clicord start        # สั่งรัน Clicord แบ็กกราวด์ (Background Daemon)
+clicord status       # เช็คสถานะการทำงาน (PID, โฟลเดอร์, ธีม, ผู้ใช้)
+clicord stop         # สั่งปิด Clicord ทุกตัวที่รันอยู่ทันที
+clicord --help       # แสดงวิธีใช้งานทั้งหมด
+```
+
+---
+
 ## 📥 Installation (วิธีติดตั้ง)
 
 เปิด PowerShell ในโฟลเดอร์โปรเจกต์แล้วรัน:

@@ -1,7 +1,7 @@
 const net = require("net");
 const path = require("path");
 const fs = require("fs");
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
 
 // ==========================================
 // ⚙️ UNIVERSAL CONFIGURATION LOADER
@@ -10,6 +10,7 @@ const userHome = process.env.USERPROFILE || process.env.HOME || "";
 const localAppData = process.env.LOCALAPPDATA || path.join(userHome, "AppData", "Local");
 const globalConfigPath = path.join(userHome, ".gemini", "clicord.json");
 const localConfigPath = path.join(process.cwd(), "clicord.json");
+const pidFile = path.join(userHome, ".gemini", "clicord.pid");
 
 function loadConfig() {
     // Dynamic defaults for ANY user on ANY machine
@@ -27,7 +28,7 @@ function loadConfig() {
         profileUrl: "",
         showGitStats: true,
         enableRobloxDetection: true,
-        customStatus: ""
+        clientId: ""
     };
 
     try {
@@ -41,6 +42,112 @@ function loadConfig() {
 }
 
 let config = loadConfig();
+
+// ==========================================
+// 🕹️ CLI DAEMON CONTROL (start / stop / status)
+// ==========================================
+function handleCliCommands() {
+    const rawCmd = process.argv[2] || "";
+    const cmd = rawCmd.toLowerCase();
+
+    if (cmd === "stop") {
+        let killed = false;
+        try {
+            if (fs.existsSync(pidFile)) {
+                const info = JSON.parse(fs.readFileSync(pidFile, "utf8"));
+                if (info && info.pid) {
+                    process.kill(info.pid);
+                    killed = true;
+                }
+                fs.unlinkSync(pidFile);
+            }
+        } catch {}
+
+        try {
+            if (process.platform === "win32") {
+                execSync('wmic process where "name=\'node.exe\' and commandline like \'%discord-rpc%\' and processid!=' + process.pid + '" call terminate', { stdio: "ignore" });
+                killed = true;
+            } else {
+                execSync('pkill -f discord-rpc.js', { stdio: "ignore" });
+                killed = true;
+            }
+        } catch {}
+
+        console.log(killed ? "✅ Clicord daemon stopped." : "ℹ️ No running Clicord daemon found.");
+        process.exit(0);
+    }
+
+    if (cmd === "status") {
+        let isRunning = false;
+        let pid = null;
+        let dir = "";
+        try {
+            if (fs.existsSync(pidFile)) {
+                const info = JSON.parse(fs.readFileSync(pidFile, "utf8"));
+                if (info && info.pid) {
+                    process.kill(info.pid, 0);
+                    isRunning = true;
+                    pid = info.pid;
+                    dir = info.targetDir || "";
+                }
+            }
+        } catch {}
+
+        console.log("🌌 Clicord Rich Presence Status:");
+        if (isRunning) {
+            console.log(`  ● Daemon:    RUNNING (PID: ${pid})`);
+            console.log(`  ● Directory: ${dir || process.cwd()}`);
+            console.log(`  ● Theme:     ${config.theme}`);
+            console.log(`  ● User:      ${config.username}`);
+        } else {
+            console.log("  ○ Daemon:    STOPPED");
+            console.log("  💡 Run 'clicord' or 'clicord start' to launch.");
+        }
+        process.exit(0);
+    }
+
+    if (cmd === "start") {
+        const target = process.argv[3] ? path.resolve(process.argv[3]) : process.cwd();
+        const scriptPath = __filename;
+
+        if (process.platform === "win32") {
+            const escapedScript = scriptPath.replace(/'/g, "''");
+            const escapedTarget = target.replace(/'/g, "''");
+            const psCmd = `Start-Process -FilePath 'node' -ArgumentList @('${escapedScript}', '${escapedTarget}') -WorkingDirectory '${escapedTarget}' -WindowStyle Hidden`;
+            execSync(`powershell -NoProfile -WindowStyle Hidden -Command "${psCmd}"`);
+        } else {
+            const child = spawn(process.execPath, [scriptPath, target], {
+                detached: true,
+                stdio: "ignore"
+            });
+            child.unref();
+        }
+
+        console.log(`🚀 Clicord daemon started in background.`);
+        console.log(`📁 Monitoring: ${target}`);
+        process.exit(0);
+    }
+
+    if (cmd === "--help" || cmd === "-h" || cmd === "help") {
+        console.log(`
+🌌 Clicord - Intelligent Discord Rich Presence for Terminal & Any CLI
+
+Usage:
+  clicord [path]        Run Clicord monitoring current or target folder
+  clicord start [path]  Start Clicord daemon in background
+  clicord stop          Stop all running Clicord daemon processes
+  clicord status        Show running daemon status
+  clicord --help        Show this help message
+
+Configuration:
+  clicord.json (in current directory or ~/.gemini/clicord.json)
+`);
+        process.exit(0);
+    }
+}
+
+handleCliCommands();
+
 // Default Application IDs:
 // - "383226320970055681" -> "Playing Visual Studio Code"
 // - "1199942284653903882" -> "Playing Roblox Studio"
@@ -56,7 +163,28 @@ function getActiveClientId(rbxInfo) {
 }
 
 let activeClientId = VSCODE_CLIENT_ID;
-const targetDir = process.argv[2] || process.cwd();
+let targetDir = process.cwd();
+if (process.argv[2] && fs.existsSync(process.argv[2])) {
+    targetDir = path.resolve(process.argv[2]);
+}
+
+try {
+    fs.writeFileSync(pidFile, JSON.stringify({
+        pid: process.pid,
+        targetDir: targetDir,
+        startedAt: new Date().toISOString()
+    }));
+} catch {}
+
+process.on("exit", () => {
+    try {
+        if (fs.existsSync(pidFile)) {
+            const info = JSON.parse(fs.readFileSync(pidFile, "utf8"));
+            if (info && info.pid === process.pid) fs.unlinkSync(pidFile);
+        }
+    } catch {}
+});
+
 const startTimestamp = Math.floor(Date.now() / 1000);
 let lastActivityTime = Date.now();
 let lastTrackedTarget = "";
@@ -454,6 +582,41 @@ function getRecentlyModifiedWorkspaceFile(dir) {
     }
 }
 
+function getIpcPath(index = 0) {
+    if (process.platform === "win32") {
+        return `\\\\.\\pipe\\discord-ipc-${index}`;
+    }
+    const env = process.env;
+    const prefix = env.XDG_RUNTIME_DIR || 
+                   env.TMPDIR || 
+                   env.TMP || 
+                   env.TEMP || 
+                   (process.getuid ? `/run/user/${process.getuid()}` : null) || 
+                   "/tmp";
+    return path.join(prefix, `discord-ipc-${index}`);
+}
+
+function getActiveTerminalEditor() {
+    try {
+        if (process.platform === "win32") {
+            const out = execSync("tasklist /NH /FO CSV", { encoding: "utf8", timeout: 800 });
+            if (/nvim\.exe/i.test(out)) return "Neovim";
+            if (/vim\.exe/i.test(out)) return "Vim";
+            if (/helix\.exe/i.test(out)) return "Helix";
+            if (/micro\.exe/i.test(out)) return "Micro";
+            if (/nano\.exe/i.test(out)) return "Nano";
+        } else {
+            const out = execSync("ps -A -o comm=", { encoding: "utf8", timeout: 800 });
+            if (/\bnvim\b/i.test(out)) return "Neovim";
+            if (/\bvim\b/i.test(out)) return "Vim";
+            if (/\bhlx\b|\bhelix\b/i.test(out)) return "Helix";
+            if (/\bmicro\b/i.test(out)) return "Micro";
+            if (/\bnano\b/i.test(out)) return "Nano";
+        }
+    } catch {}
+    return null;
+}
+
 let socket = null;
 let updateInterval = null;
 
@@ -466,7 +629,7 @@ function connect(pipeIndex = 0) {
     const rbxInfo = getRobloxStudioInfo(targetDir);
     activeClientId = getActiveClientId(rbxInfo);
 
-    const pipePath = `\\\\.\\pipe\\discord-ipc-${pipeIndex}`;
+    const pipePath = getIpcPath(pipeIndex);
     const s = net.connect(pipePath, () => {
         socket = s;
         const payload = Buffer.from(JSON.stringify({ v: 1, client_id: activeClientId }));
@@ -522,9 +685,10 @@ function updatePresence() {
     const agent = getAgentActivity();
     const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
     const diffStats = config.showGitStats ? getGitDiffStats(targetDir) : null;
+    const activeEditor = getActiveTerminalEditor();
 
     // Track active changes for AFK calculation
-    const currentActivityKey = (agent ? `${agent.action}:${agent.target}` : "") + (wsMod?.file || "");
+    const currentActivityKey = (agent ? `${agent.action}:${agent.target}` : "") + (wsMod?.file || "") + (activeEditor || "");
     if (currentActivityKey && currentActivityKey !== lastTrackedTarget) {
         lastActivityTime = Date.now();
         lastTrackedTarget = currentActivityKey;
@@ -562,7 +726,8 @@ function updatePresence() {
             largeText = `${lang.name} • ${userTag}`;
         }
 
-        const subType = agent.ext === "luau" || agent.ext === "lua" ? getLuauScriptSubtype(agent.target) : "";
+        let subType = agent.ext === "luau" || agent.ext === "lua" ? getLuauScriptSubtype(agent.target) : "";
+        if (activeEditor) subType = subType ? `${subType} • ${activeEditor}` : activeEditor;
 
         if (agent.action === "Writing") {
             details = t.writing(lang.name, agent.target, subType);
@@ -581,11 +746,14 @@ function updatePresence() {
             largeImage = lang.icon;
             largeText = `${lang.name} • ${userTag}`;
         }
-        const subType = wsMod.ext === "luau" || wsMod.ext === "lua" ? getLuauScriptSubtype(wsMod.file) : "";
+        let subType = wsMod.ext === "luau" || wsMod.ext === "lua" ? getLuauScriptSubtype(wsMod.file) : "";
+        if (activeEditor) subType = subType ? `${subType} • ${activeEditor}` : activeEditor;
         details = t.writing(lang.name, wsMod.file, subType);
     } else {
         if (rbxInfo) {
             details = t.idleRoblox(rbxInfo.placeTitle);
+        } else if (activeEditor) {
+            details = `🔥 ${activeEditor} :: ${folderName}`;
         } else if (projLang.name !== "Multi-Language") {
             details = t.idleLang(projLang.name);
         } else {
