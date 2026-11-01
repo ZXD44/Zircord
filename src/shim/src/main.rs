@@ -10,14 +10,20 @@ fn main() {
     let userprofile = env::var("USERPROFILE").unwrap_or_default();
     let localappdata = env::var("LOCALAPPDATA").unwrap_or_default();
 
-    // Priority 1: Project dev folder; Priority 2: Installed script in .gemini
-    let dev_script = format!(r"{}\Documents\clicord\src\discord-rpc.js", userprofile);
-    let installed_script = format!(r"{}\.gemini\scripts\discord-rpc.js", userprofile);
+    // Priority order to locate discord-rpc.js on ANY user's machine:
+    let candidate_1 = env::var("CLICORD_SCRIPT").unwrap_or_default();
+    let candidate_2 = format!(r"{}\Documents\clicord\src\discord-rpc.js", userprofile);
+    let candidate_3 = format!(r"{}\.gemini\scripts\discord-rpc.js", userprofile);
+    let candidate_4 = r"src\discord-rpc.js".to_string();
 
-    let rpc_script = if Path::new(&dev_script).exists() {
-        Some(dev_script)
-    } else if Path::new(&installed_script).exists() {
-        Some(installed_script)
+    let rpc_script = if !candidate_1.is_empty() && Path::new(&candidate_1).exists() {
+        Some(candidate_1)
+    } else if Path::new(&candidate_2).exists() {
+        Some(candidate_2)
+    } else if Path::new(&candidate_3).exists() {
+        Some(candidate_3)
+    } else if Path::new(&candidate_4).exists() {
+        Some(candidate_4)
     } else {
         None
     };

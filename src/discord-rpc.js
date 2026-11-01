@@ -4,20 +4,27 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 // ==========================================
-// ⚙️ CONFIGURATION LOADER (clicord.json)
+// ⚙️ UNIVERSAL CONFIGURATION LOADER
 // ==========================================
-const userHome = process.env.USERPROFILE || "";
+const userHome = process.env.USERPROFILE || process.env.HOME || "";
+const localAppData = process.env.LOCALAPPDATA || path.join(userHome, "AppData", "Local");
 const globalConfigPath = path.join(userHome, ".gemini", "clicord.json");
 const localConfigPath = path.join(process.cwd(), "clicord.json");
-const fallbackConfigPath = path.join(userHome, ".gemini", "agycord.json");
 
 function loadConfig() {
+    // Dynamic defaults for ANY user on ANY machine
+    const defaultUser = process.env.CLICORD_USER || 
+                        process.env.AGY_USER || 
+                        process.env.USERNAME || 
+                        process.env.USER || 
+                        "Developer";
+
     let cfg = {
         theme: "thai",
-        username: process.env.CLICORD_USER || process.env.AGY_USER || process.env.USERNAME || "ZirconX",
+        username: defaultUser,
         afkTimeoutMinutes: 5,
         showButtons: true,
-        profileUrl: "https://github.com/ZirconX",
+        profileUrl: "",
         showGitStats: true,
         enableRobloxDetection: true,
         customStatus: ""
@@ -28,8 +35,6 @@ function loadConfig() {
             cfg = { ...cfg, ...JSON.parse(fs.readFileSync(localConfigPath, "utf8")) };
         } else if (fs.existsSync(globalConfigPath)) {
             cfg = { ...cfg, ...JSON.parse(fs.readFileSync(globalConfigPath, "utf8")) };
-        } else if (fs.existsSync(fallbackConfigPath)) {
-            cfg = { ...cfg, ...JSON.parse(fs.readFileSync(fallbackConfigPath, "utf8")) };
         }
     } catch {}
     return cfg;
@@ -181,18 +186,18 @@ function getRobloxStudioInfo(target) {
     let studioRunning = false;
     let placeTitle = null;
 
-    // 1. Ultra-fast process check using native tasklist (10ms)
+    // 1. Universal Process Check (Standard Roblox, Bloxstrap, Fishstrap)
     try {
-        const out = execSync('tasklist /FI "IMAGENAME eq RobloxStudioBeta.exe" /NH', {
+        const out = execSync('tasklist /FI "IMAGENAME eq RobloxStudioBeta.exe" /FI "IMAGENAME eq RobloxStudio.exe" /NH', {
             stdio: ["ignore", "pipe", "ignore"],
             timeout: 2000
         }).toString();
-        if (out.includes("RobloxStudioBeta.exe")) {
+        if (out.includes("RobloxStudioBeta.exe") || out.includes("RobloxStudio.exe")) {
             studioRunning = true;
         }
     } catch {}
 
-    // 2. Check Rojo project config (default.project.json)
+    // 2. Universal Rojo project config (default.project.json)
     let rojoProjectName = null;
     try {
         const defaultProj = path.join(target, "default.project.json");
@@ -202,10 +207,12 @@ function getRobloxStudioInfo(target) {
         }
     } catch {}
 
-    // 3. Check for .rbxl files or wally.toml / rokit.toml in target
+    // 3. Universal Roblox files detection (.rbxl, .rbxlx, wally, rokit, aftman)
     let hasRobloxFiles = false;
     try {
-        if (fs.existsSync(path.join(target, "wally.toml")) || fs.existsSync(path.join(target, "rokit.toml"))) {
+        if (fs.existsSync(path.join(target, "wally.toml")) || 
+            fs.existsSync(path.join(target, "rokit.toml")) ||
+            fs.existsSync(path.join(target, "aftman.toml"))) {
             hasRobloxFiles = true;
         } else {
             const files = fs.readdirSync(target);
@@ -213,31 +220,40 @@ function getRobloxStudioInfo(target) {
         }
     } catch {}
 
-    // 4. Try reading latest place title from Roblox Studio logs if available
+    // 4. Universal log scanner: check both Roblox\logs and Bloxstrap\Logs for ANY user
     if (studioRunning && !rojoProjectName) {
-        try {
-            const logsDir = path.join(process.env.LOCALAPPDATA || "", "Roblox", "logs");
-            if (fs.existsSync(logsDir)) {
+        const candidateLogDirs = [
+            path.join(localAppData, "Roblox", "logs"),
+            path.join(localAppData, "Bloxstrap", "Logs")
+        ];
+
+        for (const logsDir of candidateLogDirs) {
+            try {
+                if (!fs.existsSync(logsDir)) continue;
                 const files = fs.readdirSync(logsDir)
-                    .filter(f => f.endsWith(".log") && (f.includes("_Studio_") || f.includes(".745.")))
-                    .map(f => ({ name: f, time: fs.statSync(path.join(logsDir, f)).mtimeMs }))
+                    .filter(f => f.endsWith(".log"))
+                    .map(f => ({ path: path.join(logsDir, f), time: fs.statSync(path.join(logsDir, f)).mtimeMs }))
                     .sort((a, b) => b.time - a.time);
 
                 if (files.length > 0) {
-                    const latestLog = path.join(logsDir, files[0].name);
+                    const latestLog = files[0].path;
                     const stat = fs.statSync(latestLog);
                     const readSize = Math.min(stat.size, 32768);
                     const buf = Buffer.alloc(readSize);
                     const fd = fs.openSync(latestLog, "r");
                     fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
                     fs.closeSync(fd);
+
                     const content = buf.toString("utf8");
                     const match = content.match(/Loaded place\s+([^\r\n,]+)/i) ||
                                   content.match(/Opening place\s+([^\r\n,]+)/i);
-                    if (match) placeTitle = match[1].trim();
+                    if (match) {
+                        placeTitle = match[1].trim();
+                        break;
+                    }
                 }
-            }
-        } catch {}
+            } catch {}
+        }
     }
 
     if (studioRunning || rojoProjectName || hasRobloxFiles) {
@@ -477,7 +493,7 @@ function updatePresence() {
 
     config = loadConfig();
     const t = TEMPLATES[config.theme] || TEMPLATES.thai;
-    const userTag = config.username || "ZirconX";
+    const userTag = config.username;
     const folderName = path.basename(targetDir) || "Workspace";
     const branch = getGitInfo(targetDir);
     const rbxInfo = getRobloxStudioInfo(targetDir);
