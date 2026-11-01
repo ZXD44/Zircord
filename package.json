@@ -1,17 +1,21 @@
 {
-  "name": "agy-discord-rpc",
+  "name": "agycord",
   "version": "1.0.0",
-  "description": "Smart Discord Rich Presence (RPC) Integration for Antigravity CLI (agy)",
+  "description": "Intelligent Discord Rich Presence for Google Antigravity CLI (agy)",
   "main": "src/discord-rpc.js",
   "scripts": {
-    "start": "node src/discord-rpc.js",
-    "test": "node src/discord-rpc.js --test"
+    "start": "node src/discord-rpc.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZirconX/agycord.git"
   },
   "keywords": [
+    "agycord",
+    "vscord",
     "antigravity",
     "agy",
     "discord-rpc",
-    "vscord",
     "rich-presence",
     "cli"
   ],

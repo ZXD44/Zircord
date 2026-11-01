@@ -1,8 +1,8 @@
 [package]
-name = "agy-shim"
+name = "agycord-shim"
 version = "1.0.0"
 edition = "2021"
-description = "Universal Native Shim for Antigravity CLI with Discord Rich Presence"
+description = "Universal Native Shim for AgyCord (Antigravity CLI Discord Rich Presence)"
 authors = ["ZirconX"]
 
 [dependencies]
