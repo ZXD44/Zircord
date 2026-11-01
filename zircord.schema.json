@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Zircord Configuration",
+  "description": "Configuration schema for Zircord Discord Rich Presence",
+  "type": "object",
+  "properties": {
+    "theme": {
+      "type": "string",
+      "enum": ["thai", "modern", "cyber", "cozy"],
+      "default": "thai",
+      "description": "Rich Presence template theme"
+    },
+    "username": {
+      "type": "string",
+      "description": "Developer display name on Discord"
+    },
+    "afkTimeoutMinutes": {
+      "type": "number",
+      "default": 5,
+      "description": "Inactivity timeout in minutes before entering AFK mode"
+    },
+    "showButtons": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show interactive GitHub and Profile buttons"
+    },
+    "profileUrl": {
+      "type": "string",
+      "description": "Custom developer profile or portfolio URL"
+    },
+    "showGitStats": {
+      "type": "boolean",
+      "default": true,
+      "description": "Display real-time Git diff metrics [+ins/-del]"
+    },
+    "enableRobloxDetection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically detect Roblox Studio, Rojo, and Bloxstrap processes"
+    },
+    "clientId": {
+      "type": "string",
+      "default": "",
+      "description": "Custom Discord Application Client ID"
+    }
+  }
+}
