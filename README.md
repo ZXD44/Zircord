@@ -40,7 +40,7 @@ PLAYING A GAME
 Visual Studio Code
 
 🔥 กำลังเขียน TypeScript: src/discord-rpc.ts
-🌿 master • ✏️ แก้ไป 3 ไฟล์ [+85/-20]
+👤 ZirconX • 🌿 master • ✏️ แก้ไป 3 ไฟล์ [+85/-20]
 02:45 elapsed
 
 [ 📂 ดูโค้ดบน GitHub ]   [ 👤 ZirconX Profile ]
