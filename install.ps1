@@ -31,8 +31,6 @@ Copy-Item (Join-Path $projDir "bin\clicord") (Join-Path $targetBin "clicord") -F
 Copy-Item (Join-Path $projDir "bin\agy.exe") (Join-Path $targetBin "agy.exe") -Force
 Copy-Item (Join-Path $projDir "bin\agy.cmd") (Join-Path $targetBin "agy.cmd") -Force
 Copy-Item (Join-Path $projDir "bin\agy") (Join-Path $targetBin "agy") -Force
-Copy-Item (Join-Path $projDir "bin\agycord.cmd") (Join-Path $targetBin "agycord.cmd") -Force
-Copy-Item (Join-Path $projDir "bin\agycord") (Join-Path $targetBin "agycord") -Force
 
 if (-not (Test-Path (Join-Path $userProfile ".gemini\zircord.json"))) {
     Copy-Item (Join-Path $projDir "zircord.json") (Join-Path $userProfile ".gemini\zircord.json") -Force
