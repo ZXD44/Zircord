@@ -1,2 +1,14 @@
-#!/usr/bin/env sh
-exec "$USERPROFILE/.gemini/bin/agy.exe" "$@"
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+
+if [ -f "$LOCALAPPDATA/agy/bin/agy" ]; then
+    exec "$LOCALAPPDATA/agy/bin/agy" "$@"
+elif [ -f "$LOCALAPPDATA/agy/bin/agy.exe" ]; then
+    exec "$LOCALAPPDATA/agy/bin/agy.exe" "$@"
+elif [ -f "$HOME/.gemini/antigravity-cli/bin/agy.exe" ]; then
+    exec "$HOME/.gemini/antigravity-cli/bin/agy.exe" "$@"
+else
+    exec agy "$@"
+fi

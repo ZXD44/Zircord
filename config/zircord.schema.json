@@ -50,6 +50,21 @@
       "default": true,
       "description": "Automatically detect Roblox Studio, Rojo, and Bloxstrap processes"
     },
+    "enableFreebuffDetection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically detect Freebuff AI Agent runs, active projects, and prompts"
+    },
+    "enableAgentDetection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically detect AI Coding Agents (Claude Code, Cursor Agent, Aider, AGY, etc.)"
+    },
+    "enableCliDetection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically detect active CLI tools, compilers, package managers, and terminals"
+    },
     "clientId": {
       "type": "string",
       "default": "",

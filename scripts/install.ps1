@@ -24,14 +24,27 @@ $engineScript = Join-Path $targetScripts "discord-rpc.js"
 Copy-Item (Join-Path $projDir "src\discord-rpc.js") $engineScript -Force
 
 # 2. Copy Executables & Wrappers
-Write-Host "[2/5] Deploying universal shims and CLI watchers..." -ForegroundColor Yellow
-Copy-Item (Join-Path $projDir "bin\zircord.cmd") (Join-Path $targetBin "zircord.cmd") -Force
-Copy-Item (Join-Path $projDir "bin\zircord") (Join-Path $targetBin "zircord") -Force
-Copy-Item (Join-Path $projDir "bin\clicord.cmd") (Join-Path $targetBin "clicord.cmd") -Force
-Copy-Item (Join-Path $projDir "bin\clicord") (Join-Path $targetBin "clicord") -Force
-Copy-Item (Join-Path $projDir "bin\agy.exe") (Join-Path $targetBin "agy.exe") -Force
-Copy-Item (Join-Path $projDir "bin\agy.cmd") (Join-Path $targetBin "agy.cmd") -Force
-Copy-Item (Join-Path $projDir "bin\agy") (Join-Path $targetBin "agy") -Force
+Write-Host "[2/5] Deploying universal shims and CLI watchers (Freebuff, Claude, Cursor, Aider, AGY)..." -ForegroundColor Yellow
+$wrappers = @(
+    "zircord.cmd", "zircord",
+    "clicord.cmd", "clicord",
+    "freebuff.cmd", "freebuff",
+    "claude.cmd", "claude",
+    "cursor.cmd", "cursor",
+    "aider.cmd", "aider",
+    "agy.cmd", "agy", "agy.exe"
+)
+
+foreach ($w in $wrappers) {
+    $srcFile = Join-Path $projDir "bin\$w"
+    if (Test-Path $srcFile) {
+        try {
+            Copy-Item $srcFile (Join-Path $targetBin $w) -Force -ErrorAction Stop
+        } catch {
+            Write-Host "      Note: $w is active, skipping file overwrite." -ForegroundColor DarkGray
+        }
+    }
+}
 
 if (-not (Test-Path (Join-Path $userProfile ".gemini\zircord.json"))) {
     Copy-Item (Join-Path $projDir "zircord.json") (Join-Path $userProfile ".gemini\zircord.json") -Force
@@ -73,6 +86,7 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
 Write-Host ""
 Write-Host "🎉 Installation Complete!" -ForegroundColor Green
 Write-Host "  • Windows Auto-Start: Enabled (รันอัตโนมัติทุกครั้งที่เปิดเครื่อง)" -ForegroundColor Cyan
+Write-Host "  • All CLIs Supported: Freebuff, Claude Code, Cursor Agent, Aider, AGY, Neovim, Terminals & Shells" -ForegroundColor Cyan
 Write-Host "  • Non-CLI Users: ไม่ต้องเปิดหน้าต่าง Terminal ใดๆ ระบบจะทำงานเงียบๆ ในแบ็กกราวด์ทันทีที่มี Discord" -ForegroundColor Cyan
 Write-Host "  • CLI Users: สามารถพิมพ์ 'zircord status' หรือ 'zircord' ได้ตลอดเวลา" -ForegroundColor Cyan
 Write-Host ""

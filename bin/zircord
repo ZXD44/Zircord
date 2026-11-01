@@ -1,2 +1,9 @@
-#!/usr/bin/env sh
-node "$HOME/.gemini/scripts/discord-rpc.js" "$@"
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../src/discord-rpc.js" ]; then
+    node "$SCRIPT_DIR/../src/discord-rpc.js" "$@"
+elif [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    node "$HOME/.gemini/scripts/discord-rpc.js" "$@"
+else
+    node src/discord-rpc.js "$@"
+fi

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+
+if [ -f "$APPDATA/npm/node_modules/@anthropic-ai/claude-code/cli.mjs" ]; then
+    exec node "$APPDATA/npm/node_modules/@anthropic-ai/claude-code/cli.mjs" "$@"
+else
+    exec claude "$@"
+fi
