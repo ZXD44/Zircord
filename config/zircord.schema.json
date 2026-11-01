@@ -55,6 +55,11 @@
       "default": true,
       "description": "Automatically detect Freebuff AI Agent runs, active projects, and prompts"
     },
+    "enableKiroDetection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically detect Kiro AI CLI sessions, active workspaces, and prompts"
+    },
     "enableAgentDetection": {
       "type": "boolean",
       "default": true,

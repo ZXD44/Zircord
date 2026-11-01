@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.0] - 2026-11-01
+
+### Added
+- **Ultra-Compact Thai Theme Layout**: Redesigned Line 2 to display subfolder path (`📂 src/`, `📂 root`), Git branch, and per-file diff stats (`(master) ✏️ +14 -2` / `(master) ✨ ใหม่`) in only 19–26 characters, completely preventing mobile Discord card truncation.
+- **Per-File Git Diff Engine**: Added `getGitDiffStatsForFile()` targeting `git diff HEAD --shortstat -- <file>` for accurate, file-specific diff counts instead of whole-repo totals.
+- **100% Thai Interactive Buttons**: Renamed default Rich Presence buttons to Thai without English (`[ ดูซอร์สโค้ด ]` and `[ โปรไฟล์ผู้พัฒนา ]`, falling back to `[ ติดตามผลงาน ]`).
+- **New AI Agent & CLI Shims**: Added detection and command wrappers for Kiro (`kiro`, `kiro-cli`), Gemini CLI (`gemini`), Cursor Agent (`cursor-agent`), and Windsurf (`windsurf`).
+- **Comprehensive Agent Manual (`.agent/`)**: Added complete architecture docs, rules, and workflows under `.agent/` (`rules.md`, `systems.md`, `workflows.md`, `README.md`).
+
+### Fixed
+- **Git Porcelain Status Parsing**: Fixed leading whitespace slicing issue in `git status --porcelain` that was stripping the first character of modified file paths (`rc/...`).
+- **Missing `getKiroActivity` Reference**: Resolved `ReferenceError: getKiroActivity is not defined` when running `zircord status`.
+
+---
+
 ## [2.0.1] - 2026-11-01
 
 ### Fixed

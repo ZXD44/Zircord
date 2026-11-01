@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+
+if [ -f "$LOCALAPPDATA/Kiro-Cli/kiro-cli.exe" ]; then
+    exec "$LOCALAPPDATA/Kiro-Cli/kiro-cli.exe" "$@"
+elif [ -f "$LOCALAPPDATA/Kiro-Cli/kiro-cli" ]; then
+    exec "$LOCALAPPDATA/Kiro-Cli/kiro-cli" "$@"
+else
+    exec kiro-cli "$@"
+fi

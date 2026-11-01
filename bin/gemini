@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+if [ -f "$HOME/.gemini/scripts/discord-rpc.js" ]; then
+    nohup node "$HOME/.gemini/scripts/discord-rpc.js" "$PWD" >/dev/null 2>&1 &
+fi
+
+if [ -f "$APPDATA/npm/node_modules/@google/gemini-cli/index.js" ]; then
+    exec node "$APPDATA/npm/node_modules/@google/gemini-cli/index.js" "$@"
+elif [ -f "$APPDATA/npm/gemini" ]; then
+    exec "$APPDATA/npm/gemini" "$@"
+else
+    exec gemini "$@"
+fi
