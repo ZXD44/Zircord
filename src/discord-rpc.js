@@ -3,10 +3,63 @@ const path = require("path");
 const fs = require("fs");
 const { execSync } = require("child_process");
 
+// ==========================================
+// 🎨 CONFIGURATION & THEMES
+// ==========================================
+// เลือกธีมที่ชอบ: "thai" | "modern" | "cyber" | "cozy"
+const THEME = process.env.AGY_THEME || "thai"; 
+
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "782685898163617802"; // vscord official app ID
 const USER_TAG = process.env.AGY_USER || process.env.USERNAME || "ZirconX";
 const targetDir = process.argv[2] || process.cwd();
 const startTimestamp = Math.floor(Date.now() / 1000);
+
+const TEMPLATES = {
+    thai: {
+        writing: (lang, file) => `⚡ กำลังเขียน ${lang}: ${file}`,
+        reading: (lang, file) => `📖 กำลังส่องโค้ด: ${file}`,
+        running: (target) => `⚙️ กำลังรันคำสั่ง: ${target}`,
+        searching: (query) => `🔍 กำลังค้นคว้า: ${query}`,
+        planning: (task) => `🧠 กำลังวางแผนโค้ด: ${task}`,
+        idleLang: (lang) => `⚡ ลุยโปรเจกต์ ${lang}`,
+        idleGeneric: (folder) => `💻 นั่งเขียนโค้ดใน ${folder}`,
+        state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `⚡ แก้ไข ${dirty} ไฟล์` : ""].filter(Boolean).join(" • ")
+    },
+    modern: {
+        writing: (lang, file) => `⚡ Writing ${lang}: ${file}`,
+        reading: (lang, file) => `📖 Reading: ${file} (${lang})`,
+        running: (target) => `⚙️ Executing: ${target}`,
+        searching: (query) => `🔍 Researching: ${query}`,
+        planning: (task) => `🧠 Architecting: ${task}`,
+        idleLang: (lang) => `⚡ Developing ${lang} Project`,
+        idleGeneric: (folder) => `💻 Crafting in ${folder}`,
+        state: (user, folder, git) => `👤 ${user} @ ${folder}${git ? ` (${git})` : ""}`,
+        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `⚡ ${dirty} modified` : ""].filter(Boolean).join(" • ")
+    },
+    cyber: {
+        writing: (lang, file) => `⚡ [DEV] ${lang} // ${file}`,
+        reading: (lang, file) => `👁️ [INSPECT] ${file}`,
+        running: (target) => `🔥 [EXEC] ${target}`,
+        searching: (query) => `📡 [SCAN] ${query}`,
+        planning: (task) => `🧬 [MATRIX] ${task}`,
+        idleLang: (lang) => `⚡ [ONLINE] ${lang} Node`,
+        idleGeneric: (folder) => `💻 [IDLE] ${folder} Shell`,
+        state: (user, folder, git) => `root@${user} // ${folder}${git ? ` [${git}]` : ""}`,
+        gitFormat: (branch, dirty) => [branch ? `git:${branch}` : "", dirty ? `dirty:${dirty}` : "clean"].filter(Boolean).join(" | ")
+    },
+    cozy: {
+        writing: (lang, file) => `☕ จิบกาแฟปั่น ${lang}: ${file}`,
+        reading: (lang, file) => `📚 นั่งอ่านโค้ด: ${file}`,
+        running: (target) => `🔨 เทสต์ระบบ: ${target}`,
+        searching: (query) => `🔎 ส่องไอเดีย: ${query}`,
+        planning: (task) => `💭 วางแผนทำของเจ๋งๆ`,
+        idleLang: (lang) => `🍃 ชิลล์ๆ กับ ${lang}`,
+        idleGeneric: (folder) => `✨ อยู่ในโฟลเดอร์ ${folder}`,
+        state: (user, folder, git) => `🌱 ${user} ใน ${folder}${git ? ` (${git})` : ""}`,
+        gitFormat: (branch, dirty) => [branch ? `🌿 ${branch}` : "", dirty ? `✏️ แก้ไป ${dirty} จุด` : ""].filter(Boolean).join(" • ")
+    }
+};
 
 const LANG_MAP = {
     js: { icon: "js", name: "JavaScript" },
@@ -127,7 +180,7 @@ function getAgentActivity() {
                 return { action: "Inspecting", target, ext };
             }
         } else if (item.type === "USER_INPUT") {
-            return { action: "Architecting", target: "Planning Next Steps" };
+            return { action: "Architecting", target: "Planning Solution" };
         }
     } catch {}
     return null;
@@ -223,6 +276,7 @@ function connect(pipeIndex = 0) {
 function updatePresence() {
     if (!socket || socket.destroyed) return;
 
+    const t = TEMPLATES[THEME] || TEMPLATES.thai;
     const folderName = path.basename(targetDir) || "Workspace";
     const branch = getGitInfo(targetDir);
     const projLang = detectProjectLanguage(targetDir);
@@ -230,19 +284,13 @@ function updatePresence() {
     const wsMod = getRecentlyModifiedWorkspaceFile(targetDir);
 
     let details = "";
-    let state = "";
     let largeImage = projLang.icon;
-    let largeText = `${projLang.name} • AgyCord`;
+    let largeText = `${projLang.name} • ${USER_TAG}`;
     let smallImage = "vscode";
     let smallText = `👤 ${USER_TAG}`;
 
-    const gitBranchText = branch ? `🌿 ${branch}` : "";
-    const dirtyCountText = wsMod?.totalDirty ? `⚡ ${wsMod.totalDirty} modified` : "";
-    const gitContext = [gitBranchText, dirtyCountText].filter(Boolean).join(" • ");
-
-    // Identity badge: 👤 ZirconX @ agycord (🌿 main)
-    const contextBadge = gitContext ? ` (${gitContext})` : "";
-    const userBadge = `👤 ${USER_TAG} @ ${folderName}${contextBadge}`;
+    const gitContext = t.gitFormat(branch, wsMod?.totalDirty);
+    const state = t.state(USER_TAG, folderName, gitContext);
 
     if (agent) {
         const lang = agent.ext && LANG_MAP[agent.ext] ? LANG_MAP[agent.ext] : projLang;
@@ -250,34 +298,27 @@ function updatePresence() {
         largeText = `${lang.name} • ${USER_TAG}`;
 
         if (agent.action === "Writing") {
-            details = `⚡ Writing ${lang.name}: ${agent.target}`;
-            state = userBadge;
+            details = t.writing(lang.name, agent.target);
         } else if (agent.action === "Inspecting") {
-            details = `📖 Reading: ${agent.target} (${lang.name})`;
-            state = userBadge;
+            details = t.reading(lang.name, agent.target);
         } else if (agent.action === "Executing") {
-            details = `⚙️ Executing: ${agent.target}`;
-            state = userBadge;
+            details = t.running(agent.target);
         } else if (agent.action === "Researching") {
-            details = `🔍 Researching: ${agent.target}`;
-            state = userBadge;
+            details = t.searching(agent.target);
         } else {
-            details = `🧠 ${agent.action}: ${agent.target}`;
-            state = userBadge;
+            details = t.planning(agent.target);
         }
     } else if (wsMod && wsMod.file) {
         const lang = wsMod.ext && LANG_MAP[wsMod.ext] ? LANG_MAP[wsMod.ext] : projLang;
         largeImage = lang.icon;
         largeText = `${lang.name} • ${USER_TAG}`;
-        details = `⚡ Writing ${lang.name}: ${wsMod.file}`;
-        state = userBadge;
+        details = t.writing(lang.name, wsMod.file);
     } else {
         if (projLang.name !== "Multi-Language") {
-            details = `⚡ Developing ${projLang.name} Project`;
+            details = t.idleLang(projLang.name);
         } else {
-            details = `💻 Crafting in ${folderName}`;
+            details = t.idleGeneric(folderName);
         }
-        state = userBadge;
     }
 
     const activity = {
