@@ -1,0 +1,11 @@
+{
+  "$schema": "../zircord.schema.json",
+  "theme": "modern",
+  "username": "Developer",
+  "afkTimeoutMinutes": 5,
+  "showButtons": true,
+  "profileUrl": "https://github.com/ZXD44",
+  "showGitStats": true,
+  "enableRobloxDetection": true,
+  "clientId": ""
+}

@@ -14,7 +14,7 @@ Write-Host ""
 $userProfile = [System.Environment]::GetFolderPath('UserProfile')
 $targetBin = Join-Path $userProfile ".gemini\bin"
 $targetScripts = Join-Path $userProfile ".gemini\scripts"
-$projDir = $PSScriptRoot
+$projDir = Split-Path -Parent $PSScriptRoot
 
 New-Item -ItemType Directory -Path $targetBin, $targetScripts -Force | Out-Null
 

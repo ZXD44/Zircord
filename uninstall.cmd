@@ -5,7 +5,7 @@ echo ===================================================
 echo   Uninstalling Zircord...
 echo ===================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0uninstall.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\uninstall.ps1"
 echo.
 echo Press any key to exit...
 pause >nul

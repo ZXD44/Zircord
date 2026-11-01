@@ -100,7 +100,7 @@ zircord --help       # แสดงวิธีใช้งานทั้งห
 
 ```json
 {
-  "$schema": "./zircord.schema.json",
+  "$schema": "./config/zircord.schema.json",
   "theme": "thai",
   "username": "ZirconX",
   "afkTimeoutMinutes": 5,
@@ -111,6 +111,34 @@ zircord --help       # แสดงวิธีใช้งานทั้งห
   "clientId": ""
 }
 ```
+
+*ดูพรีเซ็ตตัวอย่างเพิ่มเติมได้ในโฟลเดอร์ [`config/presets/`](config/presets/)*
+
+---
+
+## 📁 Project Structure (โครงสร้างโปรเจกต์)
+
+```text
+Zircord/
+├── .github/              # GitHub Actions CI & Issue Templates
+├── bin/                  # Executables & CLI Launchers
+├── config/               # JSON Schema & Presets (thai, cyber, modern, roblox-dev)
+├── docs/                 # Architecture, Changelog & Contributing Guide
+├── scripts/              # Install & Uninstall automation scripts
+├── src/                  # Core Discord RPC Daemon & Rust Shim Source
+├── install.cmd           # 1-Click Installer for Windows
+├── uninstall.cmd         # 1-Click Uninstaller
+├── zircord.json          # Main user configuration
+└── README.md
+```
+
+---
+
+## 📚 Documentation (เอกสารเพิ่มเติม)
+
+* 🏛️ [Architecture Guide](docs/ARCHITECTURE.md) — สถาปัตยกรรมและการทำงานภายในระบบ
+* 📜 [Changelog](docs/CHANGELOG.md) — ประวัติการอัปเดตเวอร์ชัน
+* 🤝 [Contributing Guide](docs/CONTRIBUTING.md) — วิธีร่วมพัฒนาและเพิ่มธีมใหม่
 
 ### ตัวเลือกการตั้งค่า:
 | Key | Type | Default | รายละเอียด |
