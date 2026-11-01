@@ -8,6 +8,7 @@
   "showGitStats": true,
   "enableRobloxDetection": true,
   "enableFreebuffDetection": true,
+  "enableKiroDetection": true,
   "enableAgentDetection": true,
   "enableCliDetection": true,
   "clientId": ""

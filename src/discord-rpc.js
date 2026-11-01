@@ -33,6 +33,7 @@ function loadConfig() {
         showGitStats: true,
         enableRobloxDetection: true,
         enableFreebuffDetection: true,
+        enableKiroDetection: true,
         enableAgentDetection: true,
         enableCliDetection: true,
         clientId: ""
@@ -191,6 +192,8 @@ function handleCliCommands() {
             const detected = [];
             const fb = getFreebuffActivity(dir || process.cwd());
             if (fb) detected.push(`Freebuff AI (PID: ${fb.pid || "Active"}, Project: ${fb.projectName})`);
+            const kiro = getKiroActivity(dir || process.cwd());
+            if (kiro) detected.push(`Kiro AI (PID: ${kiro.pid || "Active"}, CWD: ${kiro.folder}${kiro.prompt ? `, Prompt: ${kiro.prompt}` : ""})`);
             const agy = getAntigravityActivity();
             if (agy) detected.push(`Antigravity Agent (${agy.action})`);
             const otherAgent = getOtherAiAgentActivity();
@@ -359,21 +362,39 @@ const TEMPLATES = {
         },
         idleRoblox: (place) => `🎮 Roblox: ${place}`,
         afkDetails: () => `☕ พักสายตา / AFK`,
-        afkState: () => `พักผ่อนแป๊บเดียว`,
-        state: (user, folder, git, isRoblox) => {
-            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
-            const safeFolder = isUserFolder ? "เทอร์มินัล" : folder;
-            const icon = isRoblox ? "🎮" : "📁";
-            if (safeFolder === "เทอร์มินัล" || safeFolder === "Terminal") {
-                return git ? `💻 เทอร์มินัล${git}` : "💻 เทอร์มินัล";
+        afkState: () => `พักสายตาแป๊บเดียว`,
+        state: (user, folder, git, isRoblox, wsMod) => {
+            if (isRoblox) {
+                return `🎮 ${folder}${git ? ` ${git}` : ""}`;
             }
-            return `${icon} ${safeFolder}${git || ""}`;
+
+            const isUserFolder = folder && user && folder.toLowerCase() === user.toLowerCase();
+            const isTerminal = isUserFolder || folder === "เทอร์มินัล" || folder === "Terminal";
+
+            if (isTerminal) {
+                return git ? `💻 เทอร์มินัล ${git}` : "💻 เทอร์มินัล";
+            }
+
+            const targetFolder = wsMod?.subDir ? `📂 ${wsMod.subDir}` : `📂 ${folder}`;
+            if (git) {
+                return `${targetFolder} ${git}`.trim();
+            }
+            return targetFolder;
         },
-        gitFormat: (branch, dirty, diff) => {
-            if (!branch && !dirty && !diff) return "";
-            const bStr = branch ? ` (${branch})` : "";
-            if (diff) return `${bStr} • ✏️ ${diff}`;
-            if (dirty) return `${bStr} • ✏️ ${dirty} ไฟล์`;
+        gitFormat: (branch, dirty, diff, wsMod) => {
+            const bStr = branch ? `(${branch})` : "";
+            if (wsMod?.isNew) {
+                return bStr ? `${bStr} ✨ ใหม่` : "✨ ใหม่";
+            }
+            if (wsMod?.fileDiff) {
+                return bStr ? `${bStr} ✏️ ${wsMod.fileDiff}` : `✏️ ${wsMod.fileDiff}`;
+            }
+            if (diff) {
+                return bStr ? `${bStr} ✏️ ${diff}` : `✏️ ${diff}`;
+            }
+            if (dirty) {
+                return bStr ? `${bStr} ✏️ ${dirty} ไฟล์` : `✏️ ${dirty} ไฟล์`;
+            }
             return bStr;
         }
     },
@@ -675,6 +696,34 @@ function getGitDiffStats(dir) {
     }
 }
 
+function getGitDiffStatsForFile(dir, relPath) {
+    if (!relPath) return null;
+    try {
+        let out = "";
+        try {
+            out = execSync(`git diff HEAD --shortstat -- "${relPath}"`, {
+                cwd: dir,
+                stdio: ["ignore", "pipe", "ignore"],
+                timeout: 1000
+            }).toString().trim();
+        } catch {
+            out = execSync(`git diff --shortstat -- "${relPath}"`, {
+                cwd: dir,
+                stdio: ["ignore", "pipe", "ignore"],
+                timeout: 1000
+            }).toString().trim();
+        }
+        if (!out) return null;
+        const ins = out.match(/(\d+)\s+insertion/);
+        const del = out.match(/(\d+)\s+deletion/);
+        const plus = ins ? `+${ins[1]}` : "+0";
+        const minus = del ? `-${del[1]}` : "-0";
+        return `${plus} ${minus}`;
+    } catch {
+        return null;
+    }
+}
+
 // ==========================================
 // 🤖 FREEBUFF AI CODING AGENT DETECTOR
 // ==========================================
@@ -846,6 +895,23 @@ function getFreebuffActivity(targetDir) {
 }
 
 // ==========================================
+// 🤖 KIRO AI CODING AGENT DETECTOR
+// ==========================================
+function getKiroActivity(targetDir) {
+    if (config.enableKiroDetection === false) return null;
+    const p = cachedProcessNames;
+    if (p.has("kiro-cli.exe") || p.has("kiro-cli") || p.has("kiro.exe") || p.has("kiro")) {
+        const folder = path.basename(targetDir || process.cwd()) || "Workspace";
+        return {
+            agent: "Kiro",
+            name: "Kiro AI",
+            folder: folder
+        };
+    }
+    return null;
+}
+
+// ==========================================
 // 🧠 ANTIGRAVITY AGENT ACTIVITY DETECTOR
 // ==========================================
 function getAntigravityActivity() {
@@ -996,27 +1062,45 @@ function getRecentlyModifiedWorkspaceFile(dir) {
         }).toString().trim();
         if (!out) return null;
 
-        const files = out.split("\n").map(l => l.trim().slice(3).replace(/"/g, "")).filter(Boolean);
+        const rawLines = out.split(/\r?\n/).filter(Boolean);
         let newest = null;
+        let newestStatusCode = "";
         let newestTime = 0;
         const now = Date.now();
 
-        for (const f of files) {
-            const fullPath = path.isAbsolute(f) ? f : path.join(dir, f);
+        for (const line of rawLines) {
+            if (line.length < 4) continue;
+            const statusCode = line.slice(0, 2).trim();
+            const rawFile = line.slice(3).trim().replace(/^["']|["']$/g, "");
+            const fullPath = path.isAbsolute(rawFile) ? rawFile : path.join(dir, rawFile);
             if (fs.existsSync(fullPath)) {
                 const mtime = fs.statSync(fullPath).mtimeMs;
                 if (mtime > newestTime) {
                     newestTime = mtime;
-                    newest = f;
+                    newest = rawFile;
+                    newestStatusCode = statusCode;
                 }
             }
         }
 
         if (newest && (now - newestTime < 180000)) {
             const base = path.basename(newest);
-            return { file: base, ext: path.extname(base).slice(1).toLowerCase(), totalDirty: files.length };
+            const rawDir = path.dirname(newest).replace(/\\/g, "/");
+            const subDir = (rawDir === "." || !rawDir) ? "root" : `${rawDir}/`;
+            const isNew = newestStatusCode === "??" || newestStatusCode.includes("A");
+            const fileDiff = !isNew ? getGitDiffStatsForFile(dir, newest) : null;
+
+            return {
+                file: base,
+                relPath: newest,
+                subDir: subDir,
+                isNew: isNew,
+                fileDiff: fileDiff,
+                ext: path.extname(base).slice(1).toLowerCase(),
+                totalDirty: rawLines.length
+            };
         }
-        return { totalDirty: files.length };
+        return { totalDirty: rawLines.length };
     } catch {
         return null;
     }
@@ -1103,6 +1187,7 @@ function updatePresence() {
 
     // Active Activity Detectors
     const freebuff = getFreebuffActivity(targetDir);
+    const kiro = getKiroActivity(targetDir);
     const agyAgent = getAntigravityActivity();
     const otherAgent = getOtherAiAgentActivity();
     const activeEditor = getActiveTerminalEditor();
@@ -1159,9 +1244,9 @@ function updatePresence() {
         smallText = rbxInfo.hasRojo ? "Rojo Synced" : "Roblox Studio";
     }
 
-    const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats);
+    const gitContext = t.gitFormat(branch, wsMod?.totalDirty, diffStats, wsMod);
     const displayFolder = rbxInfo ? rbxInfo.placeTitle : (freebuff ? freebuff.projectName : folderName);
-    let state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo));
+    let state = t.state(userTag, displayFolder, gitContext, Boolean(rbxInfo), wsMod, branch);
 
     if (isAfk) {
         details = t.afkDetails();
@@ -1174,6 +1259,12 @@ function updatePresence() {
         largeText = `Freebuff AI Agent • ${userTag}`;
         smallImage = "vscode";
         smallText = `🤖 Freebuff AI • Zircord`;
+    } else if (kiro) {
+        details = t.aiAgent("Kiro AI", folderName, "");
+        largeImage = projLang.icon || "vscode";
+        largeText = `Kiro AI Agent • ${userTag}`;
+        smallImage = "vscode";
+        smallText = `🤖 Kiro AI • Zircord`;
     } else if (agyAgent) {
         const lang = agyAgent.ext && LANG_MAP[agyAgent.ext] ? LANG_MAP[agyAgent.ext] : projLang;
         if (!rbxInfo) {
@@ -1261,20 +1352,20 @@ function updatePresence() {
             if (buttons.length === 0) {
                 if (remoteUrl) {
                     buttons.push({
-                        label: "ดูโค้ดบน GitHub",
+                        label: "ดูซอร์สโค้ด",
                         url: remoteUrl
                     });
                     buttons.push({
-                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        label: "โปรไฟล์ผู้พัฒนา",
                         url: fallbackProfileUrl
                     });
                 } else {
                     buttons.push({
-                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        label: "โปรไฟล์ผู้พัฒนา",
                         url: fallbackProfileUrl
                     });
                     buttons.push({
-                        label: "โปรเจกต์ Zircord",
+                        label: "ติดตามผลงาน",
                         url: zircordRepoUrl
                     });
                 }
@@ -1282,12 +1373,12 @@ function updatePresence() {
                 const firstUrl = buttons[0].url;
                 if (firstUrl !== fallbackProfileUrl) {
                     buttons.push({
-                        label: `โปรไฟล์ ${userTag}`.slice(0, 32),
+                        label: "โปรไฟล์ผู้พัฒนา",
                         url: fallbackProfileUrl
                     });
                 } else {
                     buttons.push({
-                        label: "โปรเจกต์ Zircord",
+                        label: "ติดตามผลงาน",
                         url: zircordRepoUrl
                     });
                 }

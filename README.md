@@ -20,14 +20,14 @@
 PLAYING A GAME
 Visual Studio Code
 
-🤖 Freebuff: ฝากออกแบบใหม่ทั้งหมดเว็บ...
-📁 MCPE-WEBSKIN (main) • ✏️ +27 -6 • 🤖 Freebuff Agent
+🔥 เขียนโค้ด: discord-rpc.js
+📂 src/ (master) ✏️ +14 -2
 02:45 elapsed
 
-[ ดูโค้ดบน GitHub ]   [ โปรไฟล์ ZirconX ]
+[ ดูซอร์สโค้ด ]   [ โปรไฟล์ผู้พัฒนา ]
 ```
 
-> 📱 **ออกแบบรองรับมือถือ 100%:** สั้นกระชับ พอดีการ์ด ไม่โดนตัดคำไข่ปลา (`...`) และปุ่มกดภาษาไทยไร้อีโมจิแสดงผลสวยงามเมื่อคนอื่นส่องโปรไฟล์
+> 📱 **ออกแบบรองรับมือถือ 100%:** สั้นกระชับ (19–26 ตัวอักษร) พอดีการ์ด ไม่โดนตัดคำไข่ปลา (`...`) พร้อมปุ่มกดภาษาไทยไร้อังกฤษ แสดงผลสวยงามเมื่อคนอื่นส่องโปรไฟล์
 
 ---
 
@@ -35,12 +35,13 @@ Visual Studio Code
 * 🚀 **เปิดคอมแล้วรันเองทันที:** รันเงียบๆ ในแบ็กกราวด์ ไม่ขึ้นหน้าต่างดำกวนใจ
 * 🤖 **รองรับ CLI ทุกตัว & AI Coding Agents:**
   * **Freebuff:** ตรวจจับโปรเจกต์ที่ทำอยู่, คำสั่ง Prompt, Tool ที่กำลังรัน และ PID สดๆ จาก `~/.config/manicode`
-  * **Claude Code, Cursor Agent, Aider, AGY (Antigravity), Gemini, OpenCode, Codex, Copilot, Goose, Ollama**
+  * **Kiro AI:** ตรวจจับ Kiro CLI (`kiro-cli` / `kiro`), เวิร์กสเปซ และเซสชัน AI
+  * **Claude Code, Cursor Agent, Aider, AGY (Antigravity), Gemini CLI, Windsurf, OpenCode, Codex, Copilot, Goose, Ollama**
 * 💻 **ตรวจจับ Terminal Editors:** ถ้าเปิด Neovim, Vim, Helix, Micro, หรือ Nano ในคอนโซล ระบบจะโชว์บน Discord ทันที
 * ⚙️ **ตรวจจับ Dev CLIs & Shells:** Cargo, Bun, Deno, Docker, Kubernetes, Git, Go, Python, PowerShell, Windows Terminal, Bash, WSL
 * 🎮 **รองรับ Roblox Studio & Luau:** ตรวจจับชื่อ Place, Rojo Sync, และแยกระหว่าง Client/Server/Module Script ให้อัตโนมัติ
-* 📊 **บอกสถานะ Git:** โชว์ Branch ปัจจุบัน และจำนวนบรรทัดที่แก้ `[+27/-6]` แบบเรียลไทม์
-* ☕ **มีโหมด AFK:** นั่งพักสายตาเกิน 5 นาที สถานะจะเปลี่ยนเป็นจิบกาแฟพักเบรกให้อัตโนมัติ
+* 📊 **สถิติ Git แบบ Per-File:** โชว์โฟลเดอร์ย่อย (`📂 src/`, `📂 root`), Branch และจำนวนบรรทัดที่แก้ในไฟล์นั้น `✏️ +14 -2` หรือ `✨ ใหม่`
+* ☕ **มีโหมด AFK:** นั่งพักสายตาเกิน 5 นาที สถานะจะเปลี่ยนเป็นพักสายตาให้อัตโนมัติ
 
 ---
 
@@ -71,7 +72,7 @@ zircord freebuff          # ทางลัดรัน Freebuff ผ่าน Zi
 zircord nvim              # ทางลัดรัน Neovim ผ่าน Zircord ทันที
 ```
 
-> 💡 **หมายเหตุ:** ตัวติดตั้งได้เตรียม Wrapper สำหรับคำสั่งยอดนิยม (`freebuff`, `claude`, `cursor`, `aider`, `agy`) ไว้ใน PATH ให้เรียบร้อยแล้ว สามารถพิมพ์คำสั่งเดิมใน Terminal ได้ตามปกติ ระบบจะต่อสถานะเข้า Discord อัตโนมัติ
+> 💡 **หมายเหตุ:** ตัวติดตั้งได้เตรียม Wrapper สำหรับคำสั่งยอดนิยม (`freebuff`, `claude`, `cursor`, `cursor-agent`, `kiro`, `gemini`, `windsurf`, `aider`, `agy`) ไว้ใน PATH ให้เรียบร้อยแล้ว สามารถพิมพ์คำสั่งเดิมใน Terminal ได้ตามปกติ ระบบจะต่อสถานะเข้า Discord อัตโนมัติ
 
 ---
 
@@ -89,6 +90,7 @@ zircord nvim              # ทางลัดรัน Neovim ผ่าน Zirc
   "showGitStats": true,
   "enableRobloxDetection": true,
   "enableFreebuffDetection": true,
+  "enableKiroDetection": true,
   "enableAgentDetection": true,
   "enableCliDetection": true,
   "clientId": ""

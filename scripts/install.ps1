@@ -24,15 +24,20 @@ $engineScript = Join-Path $targetScripts "discord-rpc.js"
 Copy-Item (Join-Path $projDir "src\discord-rpc.js") $engineScript -Force
 
 # 2. Copy Executables & Wrappers
-Write-Host "[2/5] Deploying universal shims and CLI watchers (Freebuff, Claude, Cursor, Aider, AGY)..." -ForegroundColor Yellow
+Write-Host "[2/5] Deploying universal shims and CLI watchers (Freebuff, Claude, Cursor, Aider, AGY, Kiro, Gemini, Windsurf)..." -ForegroundColor Yellow
 $wrappers = @(
     "zircord.cmd", "zircord",
     "clicord.cmd", "clicord",
     "freebuff.cmd", "freebuff",
     "claude.cmd", "claude",
     "cursor.cmd", "cursor",
+    "cursor-agent.cmd", "cursor-agent",
     "aider.cmd", "aider",
-    "agy.cmd", "agy", "agy.exe"
+    "agy.cmd", "agy", "agy.exe",
+    "kiro.cmd", "kiro",
+    "kiro-cli.cmd", "kiro-cli",
+    "gemini.cmd", "gemini",
+    "windsurf.cmd", "windsurf"
 )
 
 foreach ($w in $wrappers) {
