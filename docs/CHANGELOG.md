@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.0] - 2026-11-05
+
+### Added
+- **vscord 1:1 Aesthetic**: Complete layout, details, state, timestamps, and asset mapping aligned with [LeonardSSH/vscord](https://open-vsx.org/extension/LeonardSSH/vscord).
+- **Multi-Theme Engine**: Added `"vscord"` (clean minimalist VS Code default) alongside `"thai"`, `"cyber"`, and `"cozy"`.
+- **Smart Git Root Resolver**: Implemented `findGitRoot()` to traverse project trees and completely skip executing git commands when outside git repos.
+- **UTF-8 Byte Boundary Truncation**: Added `truncateUtf8()` enforcing Discord's strict 128-byte limit across all payload strings to prevent silent packet drops.
+
+### Changed
+- **Zero-Bloat Architecture (LessLOC)**: Trimmed codebase from 1,443 lines to ~590 lines (over 60% code reduction) eliminating duplicate loops and redundant handlers.
+- **Throttled Process Polling**: Throttled process inspection intervals to 12s, cutting CPU churn and memory footprint.
+- **Upgraded Schema**: Added `"vscord"` to `config/zircord.schema.json`.
+
+### Fixed
+- **Windows Console Window Popups**: Replaced all shell `exec()` calls with direct `execFile()` using `{ windowsHide: true }`, permanently eliminating black `cmd.exe` / `conhost.exe` flashing windows.
+- **Single-Instance Mutex**: Redesigned PID lock with atomic cleanup to prevent zombie daemons and duplicate background processes.
+- **Socket Stream Resilience**: Hardened Discord IPC connection with exponential backoff on pipe disconnections (`\\.\pipe\discord-ipc-0..9`).
+
+---
+
 ## [2.1.0] - 2026-11-01
 
 ### Added
