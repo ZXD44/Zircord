@@ -14,34 +14,36 @@
 
 ---
 
-### 📸 หน้าตาบน Discord
+### 📸 หน้าตาบน Discord (vscord Edition)
 
 ```text
 PLAYING A GAME
 Visual Studio Code
 
-🔥 เขียนโค้ด: discord-rpc.js
-📂 src/ (master) ✏️ +14 -2
+Editing discord-rpc.js
+Workspace: Zircord (master [+14 -2])
 02:45 elapsed
 
-[ ดูซอร์สโค้ด ]   [ โปรไฟล์ผู้พัฒนา ]
+[ View Repository ]   [ View Profile ]
 ```
 
-> 📱 **ออกแบบรองรับมือถือ 100%:** สั้นกระชับ (19–26 ตัวอักษร) พอดีการ์ด ไม่โดนตัดคำไข่ปลา (`...`) พร้อมปุ่มกดภาษาไทยไร้อังกฤษ แสดงผลสวยงามเมื่อคนอื่นส่องโปรไฟล์
+> 🌟 **vscord Standard:** จำลองความเท่และมินิมอลระดับพรีเมียมจาก [LeonardSSH/vscord](https://open-vsx.org/extension/LeonardSSH/vscord) แบบ 1:1 พร้อมไอคอนภาษาและปุ่ม GitHub / Profile อัตโนมัติ (และมีโหมด `thai`, `cyber`, `cozy` ให้เลือกปรับแต่งได้อิสระ)
 
 ---
 
 ### ⚡ จุดเด่น
-* 🚀 **เปิดคอมแล้วรันเองทันที:** รันเงียบๆ ในแบ็กกราวด์ ไม่ขึ้นหน้าต่างดำกวนใจ
+* 🚀 **เปิดคอมแล้วรันเองทันที:** รันเงียบๆ ในแบ็กกราวด์ ไม่ขึ้นหน้าต่างดำกวนใจ ไร้ process churn 100%
+* 🎨 **vscord 1:1 Aesthetic:** รองรับธีม `vscord` (มินิมอลสไตล์ VS Code แท้), `thai`, `cyber` และ `cozy`
 * 🤖 **รองรับ CLI ทุกตัว & AI Coding Agents:**
-  * **Freebuff:** ตรวจจับโปรเจกต์ที่ทำอยู่, คำสั่ง Prompt, Tool ที่กำลังรัน และ PID สดๆ จาก `~/.config/manicode`
-  * **Kiro AI:** ตรวจจับ Kiro CLI (`kiro-cli` / `kiro`), เวิร์กสเปซ และเซสชัน AI
-  * **Claude Code, Cursor Agent, Aider, AGY (Antigravity), Gemini CLI, Windsurf, OpenCode, Codex, Copilot, Goose, Ollama**
-* 💻 **ตรวจจับ Terminal Editors:** ถ้าเปิด Neovim, Vim, Helix, Micro, หรือ Nano ในคอนโซล ระบบจะโชว์บน Discord ทันที
-* ⚙️ **ตรวจจับ Dev CLIs & Shells:** Cargo, Bun, Deno, Docker, Kubernetes, Git, Go, Python, PowerShell, Windows Terminal, Bash, WSL
+  * **Antigravity (AGY):** แสดงผลสดๆ แบบเรียลไทม์เมื่อ Agent กำลังเขียน/แก้โค้ด
+  * **Freebuff AI:** ตรวจจับโปรเจกต์, คำสั่ง และงานที่ทำอยู่
+  * **Kiro AI, Claude Code, Cursor Agent, Aider, Gemini CLI, Windsurf, OpenCode, Codex, Copilot**
+* 💻 **ตรวจจับ Terminal Editors:** Neovim, Vim, Helix, Micro, หรือ Nano ในคอนโซล
+* ⚙️ **ตรวจจับ Dev CLIs & Shells:** Cargo, Bun, Deno, Docker, Git, Go, Python, PowerShell, Windows Terminal
 * 🎮 **รองรับ Roblox Studio & Luau:** ตรวจจับชื่อ Place, Rojo Sync, และแยกระหว่าง Client/Server/Module Script ให้อัตโนมัติ
-* 📊 **สถิติ Git แบบ Per-File:** โชว์โฟลเดอร์ย่อย (`📂 src/`, `📂 root`), Branch และจำนวนบรรทัดที่แก้ในไฟล์นั้น `✏️ +14 -2` หรือ `✨ ใหม่`
-* ☕ **มีโหมด AFK:** นั่งพักสายตาเกิน 5 นาที สถานะจะเปลี่ยนเป็นพักสายตาให้อัตโนมัติ
+* 📊 **สถิติ Git แบบเรียลไทม์:** โชว์ชื่อ Workspace, Branch และความต่างของโค้ด `[+14 -2]` หรือ `✏️ +14 -2`
+* ☕ **ระบบ Smart AFK / Idle Detection:** เมื่อหยุดเขียนโค้ดเกิน 5 นาที สถานะจะเปลี่ยนเป็น Idling / พักสายตา อัตโนมัติ
+* 🛡️ **Zero-Bloat & Zero-Bugs:** ลดการใช้โค้ดลงกว่า 60% สั่งงานแบบ non-blocking, ตัดคำ UTF-8 ป้องกัน Discord packet drop, และป้องกัน Daemon รันซ้ำซ้อน 100%
 
 ---
 

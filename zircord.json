@@ -1,7 +1,8 @@
 {
   "$schema": "./config/zircord.schema.json",
-  "theme": "thai",
+  "theme": "vscord",
   "username": "ZirconX",
+  "appName": "Visual Studio Code",
   "afkTimeoutMinutes": 5,
   "showButtons": true,
   "profileUrl": "https://github.com/ZXD44",

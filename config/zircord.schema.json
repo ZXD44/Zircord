@@ -6,9 +6,9 @@
   "properties": {
     "theme": {
       "type": "string",
-      "enum": ["thai", "modern", "cyber", "cozy"],
-      "default": "thai",
-      "description": "Rich Presence template theme"
+      "enum": ["vscord", "thai", "cyber", "cozy"],
+      "default": "vscord",
+      "description": "Rich Presence template theme (vscord is 1:1 with LeonardSSH/vscord)"
     },
     "username": {
       "type": "string",
