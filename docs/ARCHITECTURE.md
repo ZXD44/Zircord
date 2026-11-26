@@ -17,29 +17,28 @@ This document describes the high-level architecture and internal mechanics of **
                               |
                               v
              +---------------------------------+
-             |   Zircord Core RPC Engine       |
-             |   (src/discord-rpc.js)          |
+             |   Zircord Native Rust Core      |
+             |   (bin/zircord.exe ~371 KB)     |
              +----------------+----------------+
                               |
        +----------------------+----------------------+
        |                      |                      |
        v                      v                      v
 +--------------+      +---------------+      +---------------+
-| Git Tracker  |      | Process Hook  |      | Brain Monitor |
-| Branch, Diff |      | Roblox/Neovim |      | AI Agent Logs |
+| Git Tracker  |      | Win32 Proc    |      | Claude Hook   |
+| Branch, Diff |      | ToolHelp32    |      | & AGY Logs    |
 +-------+------+      +-------+-------+      +-------+-------+
         \                     |                     /
          \                    |                    /
           +-------------------+-------------------+
                               |
                      Payload Formatter
-                     (Themes & Layouts)
+                     (Themes & Standby)
                               |
                               v
              +---------------------------------+
-             |   Platform IPC Socket Stream    |
-             | Windows: \\.\pipe\discord-ipc-X |
-             | Linux/macOS: /tmp/discord-ipc-X |
+             |   Native Windows Named Pipe     |
+             |   \\.\pipe\discord-ipc-0..9     |
              +----------------+----------------+
                               |
                               v
@@ -50,16 +49,15 @@ This document describes the high-level architecture and internal mechanics of **
 
 ## 🔌 Modules & Directory Structure
 
-* **`bin/`**: Universal command line launchers (`zircord`, `zircord.cmd`, `clicord`, `clicord.cmd`) and the native Rust shim `bin/agy.exe`.
+* **`bin/`**: Native Rust multi-call binary (`zircord.exe`) + CLI wrappers.
 * **`config/`**: Configuration schema and presets (`thai`, `cyber`, `modern`, `roblox-dev`).
 * **`docs/`**: Project documentation, guides, changelogs, and contribution rules.
-* **`scripts/`**: PowerShell scripts for installation and uninstallation.
-* **`src/`**: Primary Node.js Discord RPC daemon and Rust shim source.
+* **`scripts/`**: PowerShell installer/uninstaller and Startup VBS launcher (`start-daemon.vbs`).
+* **`src/`**: Native Rust core (`src/shim/src/` -> `main.rs`, `win.rs`, `ipc.rs`, `hook.rs`, `presence.rs`) and legacy Node.js fallback (`src/discord-rpc.js`).
 
 ---
 
-## ⚡ Zero External Dependencies
-Zircord achieves maximum stability and zero-friction installation by relying exclusively on built-in Node.js libraries:
-* `net`: Direct raw IPC socket streams (Opcode 0 Handshake, Opcode 1 Frame).
-* `child_process`: Lightweight, non-blocking process inspection (`tasklist`, `git status`).
-* `fs` & `path`: Safe configuration and workspace activity monitoring.
+## ⚡ Native Rust Zero-Bloat Runtime
+* `std::fs::OpenOptions`: Direct Named Pipe (`\\.\pipe\discord-ipc-0..9`) IPC framing (Opcode 0 Handshake, Opcode 1 Frame).
+* `windows-sys` (`CreateToolhelp32Snapshot`): Zero-spawn process monitoring in memory.
+* `zircord hook`: Sub-2ms Claude Code stdin hook writer (`~/.gemini/zircord-claude.json`).

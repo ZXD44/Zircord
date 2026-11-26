@@ -315,39 +315,75 @@ function getWorkspaceActivity(dir) {
 // ============================================================================
 // 🤖 AI CODING AGENT & CLI DETECTORS
 // ============================================================================
-function detectAiActivity(targetDir) {
-    // 1. Antigravity Agent
+function readClaudeHookState() {
     try {
-        const brainDir = path.join(USER_HOME, ".gemini", "antigravity-cli", "brain");
-        if (fs.existsSync(brainDir)) {
-            const entries = fs.readdirSync(brainDir, { withFileTypes: true })
-                .filter(d => d.isDirectory() && d.name !== "scratch")
-                .map(d => ({ path: path.join(brainDir, d.name), time: fs.statSync(path.join(brainDir, d.name)).mtimeMs }))
-                .sort((a, b) => b.time - a.time);
-
-            if (entries.length > 0) {
-                const transcript = path.join(entries[0].path, ".system_generated", "logs", "transcript.jsonl");
-                if (fs.existsSync(transcript)) {
-                    const st = fs.statSync(transcript);
-                    if (Date.now() - st.mtimeMs < 180000) {
-                        const fd = fs.openSync(transcript, "r");
-                        const readSize = Math.min(st.size, 4096);
-                        const buf = Buffer.alloc(readSize);
-                        fs.readSync(fd, buf, 0, readSize, st.size - readSize);
-                        fs.closeSync(fd);
-                        const lines = buf.toString("utf8").trim().split("\n");
-                        const item = JSON.parse(lines[lines.length - 1]);
-                        if (item.type === "PLANNER_RESPONSE" && item.tool_calls?.[0]) {
-                            const call = item.tool_calls[0];
-                            const tName = call.name;
-                            const target = call.args?.Path ? path.basename(call.args.Path) : (call.args?.toolSummary || "Workspace Task");
-                            return { agent: "Antigravity", action: tName.includes("edit") || tName.includes("write") ? "Writing" : "Refactoring", target };
-                        }
-                    }
-                }
-            }
+        const stateFile = path.join(USER_HOME, ".gemini", "zircord-claude.json");
+        if (!fs.existsSync(stateFile)) return null;
+        const data = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+        if (!data || !data.timestamp) return null;
+        const age = Date.now() - data.timestamp;
+        const claudeRunning = cachedProcesses.has("claude.exe") || cachedProcesses.has("claude");
+        if (age < 180000 && (claudeRunning || age < 30000)) {
+            return {
+                agent: "Claude Code",
+                action: data.action || "Assisting",
+                target: data.target || "Workspace",
+                cwd: data.cwd || "",
+                model: data.model || "",
+                toolCount: data.toolCount || 0,
+                timestamp: data.timestamp
+            };
         }
     } catch {}
+    return null;
+}
+
+function readAntigravityActivity() {
+    try {
+        const brainDir = path.join(USER_HOME, ".gemini", "antigravity-cli", "brain");
+        if (!fs.existsSync(brainDir)) return null;
+        const entries = fs.readdirSync(brainDir, { withFileTypes: true })
+            .filter(d => d.isDirectory() && d.name !== "scratch")
+            .map(d => ({ path: path.join(brainDir, d.name), time: fs.statSync(path.join(brainDir, d.name)).mtimeMs }))
+            .sort((a, b) => b.time - a.time);
+
+        if (entries.length === 0) return null;
+        const transcript = path.join(entries[0].path, ".system_generated", "logs", "transcript.jsonl");
+        if (!fs.existsSync(transcript)) return null;
+        const st = fs.statSync(transcript);
+        if (Date.now() - st.mtimeMs >= 180000) return null;
+
+        const fd = fs.openSync(transcript, "r");
+        const readSize = Math.min(st.size, 4096);
+        const buf = Buffer.alloc(readSize);
+        fs.readSync(fd, buf, 0, readSize, st.size - readSize);
+        fs.closeSync(fd);
+        const lines = buf.toString("utf8").trim().split("\n");
+        const item = JSON.parse(lines[lines.length - 1]);
+        if (item.type === "PLANNER_RESPONSE" && item.tool_calls?.[0]) {
+            const call = item.tool_calls[0];
+            const tName = call.name;
+            const target = call.args?.Path ? path.basename(call.args.Path) : (call.args?.toolSummary || "Workspace Task");
+            return {
+                agent: "Antigravity",
+                action: tName.includes("edit") || tName.includes("write") ? "Writing" : "Refactoring",
+                target,
+                timestamp: st.mtimeMs
+            };
+        }
+    } catch {}
+    return null;
+}
+
+function detectAiActivity(targetDir) {
+    const claudeState = readClaudeHookState();
+    const agyState = readAntigravityActivity();
+
+    if (claudeState && agyState) {
+        return claudeState.timestamp >= agyState.timestamp ? claudeState : agyState;
+    }
+    if (claudeState) return claudeState;
+    if (agyState) return agyState;
 
     // 2. Freebuff Agent
     try {
@@ -405,15 +441,34 @@ function detectActiveEditor() {
 // ============================================================================
 // 🎨 VSCORD-GRADE RICH PRESENCE BUILDER
 // ============================================================================
-function buildActivity(config, targetDir, startTimestamp, isAfk) {
-    const ws = getWorkspaceActivity(targetDir);
-    const git = config.showGitStats ? getGitData(targetDir) : null;
-    const ai = config.enableAgentDetection ? detectAiActivity(targetDir) : null;
-    const rbx = config.enableRobloxDetection ? detectRobloxStudio(targetDir) : null;
+function formatAiAction(action, theme) {
+    const map = {
+        Writing: { en: "✏️ Writing", th: "✏️ กำลังเขียน", cyber: "Patching" },
+        Reading: { en: "📖 Reading", th: "📖 กำลังอ่าน", cyber: "Inspecting" },
+        Searching: { en: "🔍 Searching", th: "🔍 กำลังค้นหา", cyber: "Scanning" },
+        Running: { en: "⚡ Running", th: "⚡ กำลังรัน", cyber: "Exec" },
+        Thinking: { en: "🧠 Thinking", th: "🧠 กำลังคิด", cyber: "Reasoning" },
+        Researching: { en: "🌐 Researching", th: "🌐 กำลังค้นคว้า", cyber: "Querying" },
+        Waiting: { en: "☕ Waiting", th: "☕ รอคำสั่ง", cyber: "Standby" }
+    };
+    const entry = map[action];
+    if (!entry) return theme === "thai" ? `🤖 ${action}` : action;
+    if (theme === "thai") return entry.th;
+    if (theme === "cyber") return entry.cyber;
+    return entry.en;
+}
+
+function buildActivity(config, targetDir, startTimestamp, isAfk, aiOverride) {
+    const ai = aiOverride !== undefined ? aiOverride : (config.enableAgentDetection ? detectAiActivity(targetDir) : null);
+    const effectiveDir = (ai && ai.cwd && fs.existsSync(ai.cwd)) ? ai.cwd : targetDir;
+    const ws = getWorkspaceActivity(effectiveDir);
+    const git = config.showGitStats ? getGitData(effectiveDir) : null;
+    const rbx = config.enableRobloxDetection ? detectRobloxStudio(effectiveDir) : null;
     const editor = detectActiveEditor();
 
-    // Determine Language & Icon
-    const fileExt = ws.activeExt;
+    // Determine Language & Icon (prefer active AI target file extension if present)
+    const aiExt = ai && ai.target ? path.extname(ai.target).slice(1).toLowerCase() : "";
+    const fileExt = LANG_MAP[aiExt] ? aiExt : ws.activeExt;
     const langInfo = LANG_MAP[fileExt] || { icon: "vscode", name: "Text" };
     const langName = langInfo.name;
     const langIcon = langInfo.icon;
@@ -468,15 +523,22 @@ function buildActivity(config, targetDir, startTimestamp, isAfk) {
     // 3. AI Agent Coding Mode
     else if (ai) {
         largeImage = langIcon !== "vscode" ? langIcon : "vscode";
-        largeText = `${ai.agent} Agent • ${langName}`;
+        largeText = `${ai.agent} • ${langName}`;
         smallImage = "vscode";
-        smallText = `🤖 ${ai.agent}`;
+        const metaParts = [ai.agent];
+        if (ai.model) metaParts.push(ai.model);
+        if (ai.toolCount > 0) metaParts.push(`${ai.toolCount} ops`);
+        smallText = `🤖 ${metaParts.join(" • ")}`;
 
+        const actionLabel = formatAiAction(ai.action, theme);
         if (theme === "thai") {
-            details = `🤖 ${ai.agent}: กำลัง${ai.action === "Writing" ? "เขียนโค้ด" : ai.action} ${ai.target}`;
+            details = `${ai.agent}: ${actionLabel} ${ai.target}`;
             state = `📂 ${ws.workspaceName}${git ? ` (${git.branch}${git.diff ? ` ✏️ ${git.diff}` : ""})` : ""}`;
+        } else if (theme === "cyber") {
+            details = `⚡ [${ai.agent.toUpperCase()}] ${actionLabel} // ${ai.target}`;
+            state = `root@${config.username} // ${ws.workspaceName}${git ? ` [git:${git.branch}${git.diff ? ` diff:${git.diff}` : ""}]` : ""}`;
         } else {
-            details = `${ai.agent}: ${ai.action} ${ai.target}`;
+            details = `${ai.agent}: ${actionLabel} ${ai.target}`;
             state = `Workspace: ${ws.workspaceName}${git ? ` (${git.branch}${git.diff ? ` [${git.diff}]` : ""})` : ""}`;
         }
     }
@@ -689,16 +751,21 @@ class DiscordIpcClient {
     sendCurrentPresence() {
         refreshProcessListAsync();
         const cfg = loadConfig(ACTIVE_TARGET_DIR);
+        const ai = cfg.enableAgentDetection ? detectAiActivity(ACTIVE_TARGET_DIR) : null;
         const now = Date.now();
         const afkLimit = (cfg.afkTimeoutMinutes || 5) * 60 * 1000;
-        const ws = getWorkspaceActivity(ACTIVE_TARGET_DIR);
+        const effectiveDir = (ai && ai.cwd && fs.existsSync(ai.cwd)) ? ai.cwd : ACTIVE_TARGET_DIR;
+        const ws = getWorkspaceActivity(effectiveDir);
 
         if (ws.lastModified && ws.lastModified > LAST_ACTIVITY_TIME) {
             LAST_ACTIVITY_TIME = ws.lastModified;
         }
+        if (ai && ai.timestamp && ai.timestamp > LAST_ACTIVITY_TIME) {
+            LAST_ACTIVITY_TIME = ai.timestamp;
+        }
 
         const isAfk = now - LAST_ACTIVITY_TIME > afkLimit;
-        const activity = buildActivity(cfg, ACTIVE_TARGET_DIR, START_TIMESTAMP, isAfk);
+        const activity = buildActivity(cfg, ACTIVE_TARGET_DIR, START_TIMESTAMP, isAfk, ai);
 
         this.sendFrame(1, {
             cmd: "SET_ACTIVITY",

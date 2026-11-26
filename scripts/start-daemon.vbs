@@ -5,5 +5,11 @@ If WScript.Arguments.Count > 0 Then
 Else
     targetDir = userHome
 End If
-engineScript = userHome & "\.gemini\scripts\discord-rpc.js"
-WshShell.Run "node """ & engineScript & """ """ & targetDir & """", 0, False
+zircordExe = userHome & "\.gemini\bin\zircord.exe"
+Set fso = CreateObject("Scripting.FileSystemObject")
+If fso.FileExists(zircordExe) Then
+    WshShell.Run """" & zircordExe & """ --daemon """ & targetDir & """", 0, False
+Else
+    engineScript = userHome & "\.gemini\scripts\discord-rpc.js"
+    WshShell.Run "node """ & engineScript & """ """ & targetDir & """", 0, False
+End If

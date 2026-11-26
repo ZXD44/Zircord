@@ -1,8 +1,18 @@
 [package]
-name = "clicord-shim"
-version = "1.0.0"
+name = "zircord"
+version = "2.0.0"
 edition = "2021"
-description = "Universal Native Shim for Clicord"
+description = "Ultra-lightweight Native Discord Rich Presence for Developers, CLIs, AI Agents & Roblox"
 authors = ["ZirconX"]
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

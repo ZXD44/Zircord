@@ -8,7 +8,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-ZXD44%2FZircord-blue?style=flat-square&logo=github)](https://github.com/ZXD44/Zircord)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg?style=flat-square)]()
-[![Node](https://img.shields.io/badge/Node.js-18%2B-brightgreen.svg?style=flat-square)]()
+[![Rust](https://img.shields.io/badge/Core-Native%20Rust%20(~371KB)-orange.svg?style=flat-square)]()
 
 </div>
 
@@ -32,7 +32,9 @@ Workspace: Zircord (master [+14 -2])
 ---
 
 ### ⚡ จุดเด่น
-* 🚀 **เปิดคอมแล้วรันเองทันที:** รันเงียบๆ ในแบ็กกราวด์ ไม่ขึ้นหน้าต่างดำกวนใจ ไร้ process churn 100%
+* 🚀 **Native Rust Core (~371 KB / RAM ~3.7 MB):** รันเงียบๆ ในแบ็กกราวด์ ไม่ต้องพึ่ง Node.js runtime ไร้หน้าต่างดำ 0 process churn (ใช้ Win32 `CreateToolhelp32Snapshot`)
+* 🔌 **Claude Code Real-Time Hooks (`zircord hook`):** โชว์สถานะสดๆ (`Thinking`, `Writing`, `Reading`, `Searching`, `Running`, `Standby`) พร้อมชื่อไฟล์ โมเดล และ Git diff
+* 🖥️ **Open-Program Standby:** แม้เปิดโปรแกรมทิ้งไว้ (Claude Code, VS Code, Cursor, Windsurf, Roblox Studio, Neovim, Terminal) ก็ยังโชว์ชื่อโปรแกรมบน Discord ไม่หายเป็น Idling เปล่าๆ
 * 🎨 **vscord 1:1 Aesthetic:** รองรับธีม `vscord` (มินิมอลสไตล์ VS Code แท้), `thai`, `cyber` และ `cozy`
 * 🤖 **รองรับ CLI ทุกตัว & AI Coding Agents:**
   * **Antigravity (AGY):** แสดงผลสดๆ แบบเรียลไทม์เมื่อ Agent กำลังเขียน/แก้โค้ด
@@ -51,7 +53,7 @@ Workspace: Zircord (master [+14 -2])
 
 #### สิ่งที่ต้องมีในเครื่อง:
 1. แอป **Discord** (เปิดใช้งานปกติ)
-2. **[Node.js](https://nodejs.org)** (ดาวน์โหลดตัว LTS ฟรี)
+*(ไม่ต้องติดตั้ง Node.js สำหรับตัวหลัก Native Rust `zircord.exe`)*
 
 #### ขั้นตอนติดตั้ง:
 1. ดาวน์โหลดหรือ Clone โปรเจกต์ลงเครื่อง:
